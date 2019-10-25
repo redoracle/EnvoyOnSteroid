@@ -27,10 +27,7 @@ VOLUME /datak
 
 RUN set -x \
     && apt-get update && apt-get -y upgrade  \
-    && apt-get install -y build-essential  \
-    && apt-get install -y software-properties-common  \
-    && apt-get install -y bash byobu git htop man unzip vim wget tmux \
-    && apt-get install -y libtool cmake coreutils clang-format-5.0 automake g++ flex bison curl doxygen libyajl-dev libgeoip-dev libtool dh-autoreconf libcurl4-gnutls-dev libxml2 libpcre++-dev libxml2-dev \
+    && apt-get install -y build-essential software-properties-common bash byobu git htop man unzip vim wget tmux libtool cmake coreutils clang-format-5.0 automake g++ flex bison curl doxygen libyajl-dev libgeoip-dev libtool dh-autoreconf libcurl4-gnutls-dev libxml2 libpcre++-dev libxml2-dev \
     && rm -rf /var/lib/apt/lists/* \
     && cd \
     && git clone git@github.com:octarinesec/ModSecurity-envoy.git \
