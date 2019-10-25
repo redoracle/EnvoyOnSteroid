@@ -31,7 +31,7 @@ RUN set -x \
     && rm -rf /var/lib/apt/lists/* && cd \
     && git clone https://github.com/octarinesec/ModSecurity-envoy.git \
     && git clone https://github.com/SpiderLabs/ModSecurity.git \
-    && cd ModSecurity && ./build.sh \
+    && cd ModSecurity && git submodule update --init && ./build.sh \
     && ./configure && make && cd \
     && cd ModSecurity-envoy && git submodule update --init \
     && bazel build //:envoy \
