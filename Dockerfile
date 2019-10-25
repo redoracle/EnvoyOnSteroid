@@ -28,7 +28,7 @@ VOLUME /datak
 RUN set -x \
     && apt-get update && apt-get -y upgrade  \
     && apt-get install -y wget \
-    && wget wget https://github.com/bazelbuild/bazel/releases/download/1.1.0/bazel-1.1.0-linux-x86_64 \
+    && wget https://github.com/bazelbuild/bazel/releases/download/1.1.0/bazel-1.1.0-linux-x86_64 \
     && chmod +x bazel-1.1.0-linux-x86_64 \
     && mv bazel-1.1.0-linux-x86_64 /bin/bazel \
     && apt-get install -y build-essential software-properties-common bash gnupg openjdk-11-jdk pkg-config zip zlib1g-dev unzip python3 git htop vim wget tmux libtool cmake coreutils clang-format-5.0 automake g++ flex bison curl doxygen libyajl-dev libgeoip-dev libtool dh-autoreconf libcurl4-gnutls-dev libxml2 libpcre++-dev libxml2-dev \
