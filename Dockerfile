@@ -30,7 +30,7 @@ RUN set -x \
     && apt-get install -y build-essential software-properties-common bash gnupg openjdk-11-jdk pkg-config zip zlib1g-dev unzip python3 git htop vim wget tmux libtool cmake coreutils clang-format-5.0 automake g++ flex bison curl doxygen libyajl-dev libgeoip-dev libtool dh-autoreconf libcurl4-gnutls-dev libxml2 libpcre++-dev libxml2-dev \
     && rm -rf /var/lib/apt/lists/* && cd \
     && wget wget https://github.com/bazelbuild/bazel/releases/download/1.1.0/bazel-1.1.0-linux-x86_64 \
-    && chmod +x bazel-1.1.0-linux-x86_64 && ./bazel-1.1.0-linux-x86_64 && mv bazel-1.1.0-linux-x86_64 /bin/bazel \
+    && chmod +x bazel-1.1.0-linux-x86_64 && mv bazel-1.1.0-linux-x86_64 /bin/bazel \
     && git clone https://github.com/octarinesec/ModSecurity-envoy.git \
     && git clone https://github.com/SpiderLabs/ModSecurity.git \
     && cd ModSecurity && git submodule update --init && ./build.sh \
