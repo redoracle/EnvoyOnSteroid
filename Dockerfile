@@ -30,7 +30,7 @@ RUN set -x \
     && apt-get install -y build-essential  \
     && apt-get install -y software-properties-common  \
     && apt-get install -y bash byobu git htop man unzip vim wget tmux \
-    && apt-get install -y libtool cmake realpath clang-format-5.0 automake g++ flex bison curl doxygen libyajl-dev libgeoip-dev libtool dh-autoreconf libcurl4-gnutls-dev libxml2 libpcre++-dev libxml2-dev \
+    && apt-get install -y libtool cmake coreutils clang-format-5.0 automake g++ flex bison curl doxygen libyajl-dev libgeoip-dev libtool dh-autoreconf libcurl4-gnutls-dev libxml2 libpcre++-dev libxml2-dev \
     && rm -rf /var/lib/apt/lists/* \
     && cd \
     && git clone git@github.com:octarinesec/ModSecurity-envoy.git \
@@ -43,12 +43,17 @@ RUN set -x \
     && DFILE=$(cat latest | grep tar.gz | grep href | cut -d "\"" -f 2) \
     && wget https://github.com$DFILE \
     && rm latest && tar xzvf *.tar.gz && rm *.tar.gz \
+    && cd
      
 # Set environment variables.
-ENV HOME /root
+ENV \
+HOME /root \
 
 # Define working directory.
 WORKDIR /root
+
+# Add files.
+ADD root/.bashrc /root/.bashrc
 
 # Define default command.
 CMD ["bash"]
