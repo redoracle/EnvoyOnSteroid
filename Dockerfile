@@ -27,10 +27,10 @@ VOLUME /datak
 
 RUN set -x \
     && echo "deb [arch=amd64] https://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list \
+    && curl https://bazel.build/bazel-release.pub.gpg | apt-key add - \
     && apt-get update && apt-get -y upgrade  \
     && apt-get install -y build-essential software-properties-common bash bazel openjdk-8-jdk pkg-config zip zlib1g-dev unzip python3 git htop vim wget tmux libtool cmake coreutils clang-format-5.0 automake g++ flex bison curl doxygen libyajl-dev libgeoip-dev libtool dh-autoreconf libcurl4-gnutls-dev libxml2 libpcre++-dev libxml2-dev \
     && rm -rf /var/lib/apt/lists/* && cd \
-    && curl https://bazel.build/bazel-release.pub.gpg | apt-key add - \
     && wget https://github.com/bazelbuild/bazel/releases/download/1.1.0/bazel-1.1.0-installer-linux-x86_64.sh \
     && chmod +x bazel-1.1.0-installer-linux-x86_64.sh && ./bazel-1.1.0-installer-linux-x86_64.sh \
     && git clone https://github.com/octarinesec/ModSecurity-envoy.git \
