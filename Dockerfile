@@ -28,12 +28,12 @@ VOLUME /datak
 RUN set -x \
     && apt-get update && apt-get -y upgrade  \
     && apt-get install -y build-essential software-properties-common bash byobu git htop man unzip vim wget tmux libtool cmake coreutils clang-format-5.0 automake g++ flex bison curl doxygen libyajl-dev libgeoip-dev libtool dh-autoreconf libcurl4-gnutls-dev libxml2 libpcre++-dev libxml2-dev \
-    && rm -rf /var/lib/apt/lists/* \
-    && cd \
-    && git clone git@github.com:octarinesec/ModSecurity-envoy.git \
-    && git clone git@github.com:SpiderLabs/ModSecurity.git \
-    && cd ModSecurity-envoy \
-    && git submodule update --init \
+    && rm -rf /var/lib/apt/lists/* && cd \
+    && git clone https://github.com/octarinesec/ModSecurity-envoy.git \
+    && git clone https://github.com/SpiderLabs/ModSecurity.git \
+    && cd ModSecurity && ./build.sh \
+    && ./configure && make && cd \
+    && cd ModSecurity-envoy && git submodule update --init \
     && bazel build //:envoy \
     && mkdir ../conf && cd ../conf \
     && wget https://github.com/SpiderLabs/owasp-modsecurity-crs/releases/latest \
