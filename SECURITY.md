@@ -1,0 +1,30 @@
+# Security policy
+
+This repository is a reference example for WAF evaluation, **not a hardened
+production gateway**. Report security concerns privately through the GitHub
+Security Advisories interface where available; otherwise contact the repository
+maintainer privately. Please avoid publishing working exploit details before
+coordinated disclosure.
+
+## Deployment cautions
+
+- HTTP is intentionally enabled for local development; add TLS and controlled
+  network ingress for any real deployment.
+- The example WAF uses blocking mode. Validate its false-positive rate and
+  tune rules before putting it in front of legitimate traffic.
+- The Coraza proxy-WASM `0.6.0` release cautions that its TinyGo runtime may
+  exhibit memory leaks or degraded performance. Perform soak testing; use
+  resource limits and watch logs/metrics. Do not infer production readiness
+  from a successful smoke test.
+- Upstream WASM bundles Coraza `3.3.3` and CRS `4.14.0`; upgrade to newer
+  engine/rules only when a compatible, tested WASM artifact is available.
+- Keep the Envoy admin listener bound to loopback inside the container; never
+  publish it directly on an untrusted network.
+
+## Updating dependencies
+
+Treat each version bump as a code change: verify its upstream advisory and
+compatibility, validate Envoy's bootstrap, run positive/negative HTTP tests,
+and perform a staging load test. Prefer immutable OCI digests when promoting
+images to production. No credentials are required for CI verification, and the
+project intentionally does not publish to Docker Hub automatically.

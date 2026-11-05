@@ -1,0 +1,2 @@
+# Only test-time dependency; the runtime image installs no Python packages.
+PyYAML==6.0.3

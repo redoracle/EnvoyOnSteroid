@@ -1,0 +1,85 @@
+# Envoy v3 static configuration. Production deployments should supply their
+# own upstream, TLS termination, admin access, and tuned WAF exclusions.
+static_resources:
+  listeners:
+    - name: ingress_http
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 8080
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress_http
+                codec_type: AUTO
+                common_http_protocol_options:
+                  idle_timeout: 60s
+                request_timeout: 30s
+                route_config:
+                  name: local_route
+                  virtual_hosts:
+                    - name: backend
+                      domains: ["*"]
+                      routes:
+                        - match:
+                            prefix: "/"
+                          route:
+                            cluster: backend
+                            timeout: 15s
+                http_filters:
+                  # The WAF must execute BEFORE the router.
+                  - name: envoy.filters.http.wasm
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
+                      config:
+                        name: coraza_waf
+                        root_id: ""
+                        configuration:
+                          "@type": type.googleapis.com/google.protobuf.StringValue
+                          value: |
+                            {
+                              "directives_map": {
+                                "default": [
+                                  "Include @recommended-conf",
+                                  "SecRuleEngine On",
+                                  "Include @crs-setup-conf",
+                                  "Include @owasp_crs/*.conf",
+                                  "SecRule REQUEST_URI \"@streq /__waf_test_block\" \"id:1000001,phase:1,deny,status:403,log\""
+                                ]
+                              },
+                              "default_directives": "default"
+                            }
+                        vm_config:
+                          runtime: envoy.wasm.runtime.v8
+                          vm_id: coraza_vm
+                          code:
+                            local:
+                              filename: /etc/envoy/coraza.wasm
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+  clusters:
+    - name: backend
+      connect_timeout: 5s
+      type: STRICT_DNS
+      lb_policy: ROUND_ROBIN
+      load_assignment:
+        cluster_name: backend
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: backend
+                      port_value: 8080
+
+# Administrative endpoints are intentionally unreachable from the host.
+# Access explicitly from within the container when troubleshooting.
+admin:
+  access_log_path: /dev/null
+  address:
+    socket_address:
+      address: 127.0.0.1
+      port_value: 9901
