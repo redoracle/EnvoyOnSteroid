@@ -39,8 +39,10 @@ its configured inspection limits. CI verifies both allowed and blocked POST.
 Payloads beyond body limits, unsupported parsers or evasion techniques need
 application-specific investigation.
 
-**Excess resource use.** PID/memory ceilings limit some impact but may
-terminate traffic during load. Coraza's upstream 0.6.0 release warns of
+**Excess resource use.** Envoy limits headers to 32 KiB with 10-second
+header reception, 60-second stream idle and 30-second whole-request
+timeouts. PID/memory ceilings limit some impact but may terminate traffic
+during load. None of these provides global rate limiting or DDoS defense. Coraza's upstream 0.6.0 release warns of
 TinyGo-related leaks and performance degradation; perform a sustained
 representative memory and latency test.
 

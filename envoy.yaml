@@ -39,6 +39,12 @@ static_resources:
                           duration_ms: "%DURATION%"
                           upstream_cluster: "%UPSTREAM_CLUSTER%"
                           response_flags: "%RESPONSE_FLAGS%"
+                # Bound header memory and slow-header connections from untrusted clients.
+                # These demonstration limits require app-specific tuning for large cookies
+                # and long-running or streaming requests.
+                max_request_headers_kb: 32
+                request_headers_timeout: 10s
+                stream_idle_timeout: 60s
                 common_http_protocol_options:
                   idle_timeout: 60s
                 request_timeout: 30s

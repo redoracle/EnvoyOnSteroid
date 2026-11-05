@@ -70,3 +70,12 @@ records residual risk. CI success is not a substitute for traffic testing.
    and require CI plus peer review for dependency upgrades.
 6. Monitor false-positive rates and production traffic before increasing
    CRS paranoia levels.
+
+## Header size and timeout regression
+
+The reference listener rejects request headers above **32 KiB** (HTTP 431).
+It allows 10 seconds to receive headers, 60 seconds of per-stream idleness
+and 30 seconds to receive a complete request. The smoke test covers the
+431 outcome; the exact timeouts are checked statically and via the Envoy
+bootstrap validator. Configure and test larger cookies, slow uploads,
+long polling, and streaming endpoints before production use.

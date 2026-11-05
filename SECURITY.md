@@ -53,6 +53,14 @@ encoded path separators. Client-supplied `X-Forwarded-For` is not trusted
 trusted hop counts and verify the full chain with spoofed headers before
 relying on source IPs for controls.
 
+## HTTP request exhaustion guards
+
+The example has 32 KiB maximum request headers (HTTP 431 if exceeded),
+10-second request-header reception timeout, 60-second stream idle timeout
+and 30-second complete-request timeout. These limits reduce some low-cost
+resource exhaustion attacks; they are not DDoS protection or rate limiting.
+Large cookies, slow uploads and long-lived streams need compatibility tests.
+
 ## Logging and dependency integrity
 
 Structured request logs omit client IPs, raw URI paths, query strings, cookies,

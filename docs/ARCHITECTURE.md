@@ -80,3 +80,13 @@ The demo Compose stack limits PIDs and memory on both services and gives the
 backend the same read-only, non-root, dropped-capabilities posture as Envoy.
 These limits are illustrative, not production sizing guidance. In particular,
 soak-test the WASM filter under real traffic before setting resource ceilings.
+
+## Header/time resource guardrails
+
+The sample bounds request headers to **32 KiB** (HTTP 431), the header
+receive window to **10 seconds**, idle streams to **60 seconds**, and whole
+requests to **30 seconds**. Together with container PID/memory quotas these
+reduce some untrusted-client resource exhaustion. They are not a substitute
+for application-layer rate limits, network controls, or attack-resilient
+capacity planning. Large cookies and streaming workloads may require
+documented, separately verified exceptions.

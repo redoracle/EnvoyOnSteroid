@@ -10,6 +10,7 @@ GitHub Actions; it performs no unattended image publishing.
 ```sh
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/ruff check tests
 .venv/bin/python -m unittest discover -s tests -v
 bash -n tests/smoke.sh
 docker compose config --quiet

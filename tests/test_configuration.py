@@ -144,6 +144,12 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(backend["user"], "10001:10001")
         self.assertNotIn("ports", backend)
 
+    def test_header_limits_and_slow_client_timeouts(self):
+        self.assertEqual(self.http_config["max_request_headers_kb"], 32)
+        self.assertEqual(self.http_config["request_headers_timeout"], "10s")
+        self.assertEqual(self.http_config["stream_idle_timeout"], "60s")
+        self.assertEqual(self.http_config["request_timeout"], "30s")
+
     def test_ci_uses_current_sha_pinned_actions_and_fixed_runner(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         self.assertIn("runs-on: ubuntu-24.04", workflow)
@@ -157,6 +163,8 @@ class ConfigurationTests(unittest.TestCase):
             workflow,
         )
         self.assertIn("cancel-in-progress: true", workflow)
+        self.assertIn("ruff check tests", workflow)
+        self.assertIn("bash -n tests/smoke.sh", workflow)
 
 
 if __name__ == "__main__":

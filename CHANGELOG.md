@@ -14,6 +14,8 @@ Git commits and merged PRs are **not** production releases.
 - Second audit PR hardens URI normalization, forwarded-header trust,
   structured logging, runtime isolation, and request-body regression tests.
 - Updates CI checkout/setup-python to verified commit-pinned releases.
+- Bounds oversized HTTP headers and slow-client timeouts; adds 431 regression.
+- Adds Ruff 0.17.4 lint, pinned as a test-time development dependency.
 
 ## November 2026 baseline (not a tagged release)
 

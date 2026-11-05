@@ -16,3 +16,9 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Major versions remain individual reviewable PRs.
+    groups:
+      github-actions-maintenance:
+        update-types:
+          - minor
+          - patch

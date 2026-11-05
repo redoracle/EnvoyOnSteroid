@@ -41,6 +41,15 @@ if [[ "$status" != "400" ]]; then
   exit 1
 fi
 
+# Requests exceeding the configured 32 KiB header limit must be rejected
+# before reaching the backend. Avoid external dependencies beyond coreutils.
+large_header="$(printf '%*s' 34000 '' | tr ' ' 'x')"
+status="$(http_status --header "X-Test-Large: ${large_header}" "${BASE_URL}/get")"
+if [[ "$status" != "431" ]]; then
+  printf 'FAIL: oversized request headers expected 431, got %s\n' "$status" >&2
+  exit 1
+fi
+
 status="$(http_status "${BASE_URL}/__waf_test_block")"
 if [[ "$status" != "403" ]]; then
   printf 'FAIL: WAF test rule expected 403, got %s\n' "$status" >&2
@@ -54,4 +63,4 @@ if [[ "$status" != "403" ]]; then
   exit 1
 fi
 
-printf 'PASS: GET/POST forwarded (200); encoded path rejected (400); phase-1/2 WAF and CRS XSS blocked (403)\n'
+printf 'PASS: GET/POST forwarded (200); encoded path rejected (400); header overflow rejected (431); phase-1/2 WAF and CRS XSS blocked (403)\n'

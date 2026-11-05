@@ -22,7 +22,7 @@ reverse proxy and WAF reference deployment with security-focused defaults.
   capabilities or privilege escalation, memory/PID limits, private backend.
 - **Privacy-aware logging:** structured request outcomes without URL paths,
   queries, cookies, request headers or client IP addresses.
-- **Verified CI:** GitHub Actions, pinned actions, configuration tests,
+- **Verified CI:** GitHub Actions, pinned actions, Python lint, configuration tests,
   bootstrap validation, and functional WAF regression tests.
 
 ## Architecture
@@ -31,7 +31,7 @@ reverse proxy and WAF reference deployment with security-focused defaults.
 Host 127.0.0.1:8080
    |
    v
-Envoy HTTP listener (normalization, access logging)
+Envoy HTTP listener (normalization, header/time limits, access logging)
    |
    v
 Coraza Proxy-WASM + embedded OWASP CRS
@@ -77,6 +77,7 @@ Expected status codes:
 | POST body containing `__waf_test_payload` | 403 | Phase-2 WAF rule |
 | CRS XSS probe | 403 | Embedded OWASP CRS |
 | Encoded slash path | 400 | Ambiguous path rejected |
+| Request headers above 32 KiB | 431 | Oversized header protection |
 
 If a blocking test unexpectedly succeeds, **stop deployment** and investigate
 WASM loading, rule order, and configuration. The demo listener is bound to
@@ -88,6 +89,7 @@ untrusted traffic without a full ingress security review.
 ~~~bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/ruff check tests
 .venv/bin/python -m unittest discover -s tests -v
 bash -n tests/smoke.sh
 docker compose config --quiet
@@ -112,6 +114,7 @@ read-only repository access. A green run proves basic integration behavior,
 | Coraza Proxy-WASM | `ghcr.io/corazawaf/coraza-proxy-wasm:0.6.0` | WASM OCI image; includes Coraza 3.3.3 / CRS 4.14.0 |
 | go-httpbin | `mccutchen/go-httpbin:2.26.0` | Local-only backend |
 | PyYAML | `6.0.3` | Developer / CI tests |
+| Ruff | `0.17.4` | CI-only Python lint |
 | actions/checkout | `v7.0.1` | Immutable commit SHA in workflow |
 | actions/setup-python | `v7.1.0` | Immutable commit SHA in workflow |
 
@@ -130,7 +133,8 @@ The public sample WAF rules `/__waf_test_block` and
 traffic.
 
 Before production: replace the demo backend, define TLS and allowed hosts,
-review trusted-proxy hops and URL compatibility, tune CRS exclusions/body
+review trusted-proxy hops, URL and header-size compatibility (32 KiB),
+10s header/60s idle timeouts and then tune CRS exclusions/body
 limits on representative traffic, configure monitoring and audit-log retention,
 stress-test the WASM filter, and prepare a rollback.
 

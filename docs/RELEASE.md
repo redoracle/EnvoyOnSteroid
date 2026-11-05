@@ -11,6 +11,7 @@ workflow run validates this reference stack, not production certification.
 | Coraza Proxy-WASM | 0.6.0 | WASM image; embeds CRS v4.14.0 |
 | go-httpbin | v2.26.0 | Demo backend (includes WebSocket DoS fix) |
 | PyYAML | 6.0.3 | CI/static tests |
+| Ruff | 0.17.4 | CI Python lint |
 | actions/checkout | v7.0.1 | Commit-SHA pinned CI action |
 | actions/setup-python | v7.1.0 | Commit-SHA pinned CI action |
 
@@ -27,7 +28,7 @@ updated simply by bumping a file version.
    human-readable release tag in a comment.
 3. Pin OCI images by version for local development. Record and use
    reviewed immutable `sha256` digests for production promotion.
-4. Run configuration unit tests, shell checks, Compose validation, Docker
+4. Run Python lint, configuration unit tests, shell checks, Compose validation, Docker
    build, Envoy bootstrap validation and positive/negative WAF smoke tests.
 5. Use realistic payload sizes, content types, concurrency and durations
    to assess latency, memory growth, false positives, and false negatives.
