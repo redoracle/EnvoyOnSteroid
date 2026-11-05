@@ -1,0 +1,11 @@
+.git
+.github
+.travis.yml
+.dockerignore
+README.md
+LICENSE
+SECURITY.md
+docs
+tests
+requirements-dev.txt
+docker-compose.yml

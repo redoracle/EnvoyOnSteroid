@@ -1,62 +1,19 @@
-FROM ubuntu
-MAINTAINER RedOracle
+# The WAF plugin is prebuilt upstream; no compilers, curl|sh, or apt repositories
+# are required in the final image. Bump only after CI and load tests pass.
+FROM ghcr.io/corazawaf/coraza-proxy-wasm:0.6.0 AS waf
 
-ARG BUILD_DATE
-ARG VERSION
-ARG VCS_URL
-ARG VCS_REF
+FROM envoyproxy/envoy:v1.40.2
 
-LABEL org.label-schema.build-date=$BUILD_DATE \
-      org.label-schema.vcs-url=$VCS_URL \
-      org.label-schema.vcs-ref=$VCS_REF \
-      org.label-schema.version=$VERSION \
-      org.label-schema.name='Envoy Container including ModSecurity v3 - WAF by Redoracle' \
-      org.label-schema.description='UNOfficial Envoy Container including ModSecurity v3 - WAF docker image' \
-      org.label-schema.usage='https://www.redoracle.com/docker/' \
-      org.label-schema.url='https://www.redoracle.com/' \
-      org.label-schema.vendor='RedOracle Security' \
-      org.label-schema.schema-version='1.0' \
-      org.label-schema.docker.cmd='docker run --rm redoracle/envoyonsteroid' \
-      org.label-schema.docker.cmd.devel='docker run --rm -ti redoracle/envoyonsteroid' \
-      org.label-schema.docker.debug='docker logs $CONTAINER' \
-      io.github.offensive-security.docker.dockerfile="Dockerfile" \
-      io.github.offensive-security.license="MIT" \
-      MAINTAINER="RedOracle <info@redoracle.com>"
+LABEL org.opencontainers.image.title="EnvoyOnSteroid" \
+      org.opencontainers.image.description="Envoy v3 API with a Coraza/OWASP CRS WAF filter" \
+      org.opencontainers.image.source="https://github.com/redoracle/EnvoyOnSteroid" \
+      org.opencontainers.image.licenses="MIT"
 
-VOLUME /datak
+COPY --from=waf --chmod=0555 /plugin.wasm /etc/envoy/coraza.wasm
+COPY --chmod=0444 envoy.yaml /etc/envoy/envoy.yaml
 
-RUN set -x \
-    && apt-get update && apt-get -y upgrade  \
-    && apt-get install -y build-essential software-properties-common bash gnupg openjdk-8-jdk pkg-config zip zlib1g-dev unzip python3 git htop vim wget tmux libtool cmake coreutils clang-format-5.0 automake g++ flex bison curl doxygen libyajl-dev libgeoip-dev libtool dh-autoreconf libcurl4-gnutls-dev libxml2 libpcre++-dev libxml2-dev \
-    && rm -rf /var/lib/apt/lists/* && cd \
-    && echo "deb [arch=amd64] https://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list \
-    && curl https://bazel.build/bazel-release.pub.gpg | apt-key add - \
-    && apt-get update && apt-get -y upgrade  \
-    && apt-get install -y bazel && cd \
-    && git clone https://github.com/octarinesec/ModSecurity-envoy.git \
-    && git clone https://github.com/SpiderLabs/ModSecurity.git \
-    && cd ModSecurity && git submodule update --init && ./build.sh \
-    && ./configure && make && cd \
-    && cd ModSecurity-envoy && git submodule update --init \
-    && bazel build //:envoy \
-    && mkdir ../conf && cd ../conf \
-    && wget https://github.com/SpiderLabs/owasp-modsecurity-crs/releases/latest \
-    && DFILE=$(cat latest | grep tar.gz | grep href | cut -d "\"" -f 2) \
-    && wget https://github.com$DFILE \
-    && rm latest && tar xzvf *.tar.gz && rm *.tar.gz \
-    && cd
-     
-# Set environment variables.
-ENV \
-HOME /root \
-
-# Define working directory.
-WORKDIR /root
-
-# Add files.
-ADD root/.bashrc /root/.bashrc
-
-# Define default command.
-CMD ["bash"]
-
-EXPOSE 9001 3100 3000 3101
+# The upstream Envoy image uses uid/gid 101 for its unprivileged envoy user.
+USER 101:101
+EXPOSE 8080
+STOPSIGNAL SIGTERM
+CMD ["envoy", "-c", "/etc/envoy/envoy.yaml", "--log-level", "info"]
