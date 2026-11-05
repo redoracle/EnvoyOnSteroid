@@ -28,3 +28,26 @@ compatibility, validate Envoy's bootstrap, run positive/negative HTTP tests,
 and perform a staging load test. Prefer immutable OCI digests when promoting
 images to production. No credentials are required for CI verification, and the
 project intentionally does not publish to Docker Hub automatically.
+
+## Request normalization and trusted proxy model
+
+The reference listener normalizes URL paths and merges repeated slashes
+**before** invoking the WAF or routing. Requests containing escaped forward
+or backward slashes (`%2F` or `%5C`, regardless of letter case) receive
+HTTP 400. This helps avoid ambiguous interpretation between Envoy, WAF, and
+upstream; it is a compatibility change for services that legitimately use
+encoded path separators. Client-supplied `X-Forwarded-For` is not trusted
+(`xff_num_trusted_hops: 0`). When deploying behind another gateway, set
+trusted hop counts and verify the full chain with spoofed headers before
+relying on source IPs for controls.
+
+## Logging and dependency integrity
+
+Structured request logs omit client IPs, raw URI paths, query strings, cookies,
+and headers by default; logs are still operational data and need retention
+limits and access controls. WAF diagnostic output may contain sensitive
+request evidence, so enable detailed audit logs only with explicit approval.
+Dependencies are pinned to versioned containers and GitHub Actions are pinned
+to full commit SHAs. Tags are not immutable: production image promotion should
+record or pin verified OCI digests. Do not automatically merge Dependabot PRs
+without a successful end-to-end run and compatibility review.

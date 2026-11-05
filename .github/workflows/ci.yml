@@ -9,13 +9,28 @@ on:
 permissions:
   contents: read
 
+# Do not consume runner minutes validating superseded commits.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
+      # Both actions are pinned to verified release commit SHAs (not moving tags).
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
 
       - name: Install validation dependencies
         run: |
@@ -23,7 +38,9 @@ jobs:
           .venv/bin/python -m pip install --disable-pip-version-check -r requirements-dev.txt
 
       - name: Static configuration and architecture checks
-        run: .venv/bin/python -m unittest discover -s tests -v
+        run: |
+          bash -n tests/smoke.sh
+          .venv/bin/python -m unittest discover -s tests -v
 
       - name: Validate Compose file
         run: docker compose config --quiet

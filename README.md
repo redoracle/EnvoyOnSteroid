@@ -24,8 +24,10 @@ bash tests/smoke.sh
 docker compose down
 ```
 
-The benign request should return **HTTP 200** from the internal `httpbin`
-example backend; the explicit WAF smoke-test rule should return **HTTP 403**. A CRS XSS test must also be blocked.
+The benign GET and JSON POST should return **HTTP 200** from the internal
+`httpbin` example backend; the phase-1 URI and phase-2 request-body WAF test
+rules, plus the CRS XSS test, should return **HTTP 403**. Ambiguous escaped
+slashes should be rejected with **HTTP 400** by Envoy.
 The proxy is bound to **127.0.0.1:8080** by default; the Envoy admin interface
 is loopback-only **inside the container** and is not host-published.
 
@@ -47,6 +49,15 @@ The WAF is **in blocking mode** and uses the upstream recommended configuration
 and CRS defaults. Blocking mode can cause false positives; always tune rules on
 representative traffic before production. The `/__waf_test_block` rule is a
 stable example and must be removed or adapted for production use.
+
+Envoy emits JSON access logs to standard output with method, response code,
+duration, and outcome, but deliberately omits client IP, request path,
+query string, cookies, and other request headers. Paths are normalized
+before WAF evaluation; percent-encoded slashes are rejected. Incoming
+`X-Forwarded-For` chains are **not trusted** in the example. These controls
+change URL semantics; review them before using this proxy with an application
+that deliberately relies on encoded slashes or multiple consecutive slashes.
+See the [operations guide](docs/OPERATIONS.md).
 
 For production, replace `backend` with your real service in `envoy.yaml`, add
 TLS and explicit network controls at the appropriate boundary, review request
@@ -71,7 +82,11 @@ docker compose down --volumes
 ```
 
 GitHub Actions runs these static, bootstrap, and HTTP integration checks on
-pull requests. A release should also undergo longer soak and performance
+pull requests using SHA-pinned `actions/checkout` v7.0.1 and
+`actions/setup-python` v7.1.0. GitHub-hosted runners support the required
+Node.js 24 action runtime. The workflow uses a fixed Ubuntu 24.04 runner,
+no persisted GitHub checkout credentials, and read-only repository permission.
+See [contributing](CONTRIBUTING.md) for the release process. A release should also undergo longer soak and performance
 benchmarking under realistic request-body sizes and concurrency.
 
 ## Dependencies
