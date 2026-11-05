@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/redoracle/EnvoyOnSteroid/security/policy
+    about: Review private reporting instructions. Do not disclose vulnerabilities in public issues.
+  - name: Troubleshooting runbook
+    url: https://github.com/redoracle/EnvoyOnSteroid/blob/master/docs/OPERATIONS.md
+    about: Consult the operations guide before filing a defect.

@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose an improvement to the reference implementation
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Explain the problem, proposed change, and impact on the
+        WAF security boundary and application compatibility.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and use case
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed approach and alternatives
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Security, compatibility and operational impact
+    validations:
+      required: true
+  - type: textarea
+    id: testing
+    attributes:
+      label: Suggested verification
+    validations:
+      required: false
