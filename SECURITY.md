@@ -6,6 +6,18 @@ Security Advisories interface where available; otherwise contact the repository
 maintainer privately. Please avoid publishing working exploit details before
 coordinated disclosure.
 
+## Supported scope and private reporting
+
+Maintenance focuses on the current `master` branch and reviewed changes.
+Historical 2019 components, independently copied extensions and unreviewed
+forks have no security-update commitment.
+
+Use [GitHub private vulnerability reporting](https://github.com/redoracle/EnvoyOnSteroid/security/advisories/new)
+**if enabled**. Otherwise seek a private reporting channel before sharing
+sensitive exploit material. Include affected commit/release, impact, safe
+synthetic reproduction and suggested mitigation. No response-time SLA is
+promised; please coordinate disclosure.
+
 ## Deployment cautions
 
 - HTTP is intentionally enabled for local development; add TLS and controlled

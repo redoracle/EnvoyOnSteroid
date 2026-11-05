@@ -34,6 +34,15 @@ impact. The Coraza Proxy-WASM image contains its own CRS version and cannot
 be upgraded by copying newer standalone CRS files. Only advance the plugin
 when a verified compatible image exists and soak tests pass.
 
+## Community and review
+
+Follow the [Code of Conduct](CODE_OF_CONDUCT.md), read the
+[Security Policy](SECURITY.md), and use the [bug report](.github/ISSUE_TEMPLATE/bug_report.yml)
+or [feature request](.github/ISSUE_TEMPLATE/feature_request.yml)
+forms. The [PR template](.github/PULL_REQUEST_TEMPLATE.md) describes
+required evidence; [CODEOWNERS](.github/CODEOWNERS) identifies reviewers.
+These files do not activate GitHub branch protection on their own.
+
 ## PR expectations
 
 Include a security/compatibility impact summary, affected dependency

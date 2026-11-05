@@ -50,6 +50,12 @@ be published directly. Use an approved internal diagnostic path to reach
 `127.0.0.1:9901/stats/prometheus` for metrics. Do not change its bind address
 to `0.0.0.0` merely for convenience.
 
+## Release and security review
+
+The [release checklist](RELEASE.md) documents image provenance,
+application compatibility and staging gates. The [threat model](THREAT_MODEL.md)
+records residual risk. CI success is not a substitute for traffic testing.
+
 ## Deployment review checklist
 
 1. Replace demo backend; define an explicit upstream trust boundary, TLS,

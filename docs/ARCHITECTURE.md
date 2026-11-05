@@ -32,6 +32,9 @@ The WAF JSON is embedded in the YAML `StringValue` for the WASM filter and is
 validated as JSON by the test suite. The WAF settings are static at boot; edits
 require rebuilding the image. Do not mount untrusted configuration over it.
 
+See the [threat model](THREAT_MODEL.md) for explicit attacker assumptions
+and [release process](RELEASE.md) for promotion gates.
+
 ## Production hardening checklist
 
 - Replace the demo backend and add TLS termination with a documented trust
