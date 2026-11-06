@@ -83,7 +83,9 @@ Expected status codes:
 The integration tests additionally validate the echoed backend JSON/form
 payloads, rule-specific WAF denials and recovery after stopping the demo
 backend. WAF rule attribution comes from the isolated Compose service logs:
-a generic HTTP 403 does **not** prove request-body inspection. The test
+a generic HTTP 403 does **not** prove request-body inspection.
+The test oracle correlates matched rule IDs and denial phases to the same
+Coraza transaction ID, with offline negative tests protecting the parser. The test
 entrypoint `tests/smoke.sh` performs readiness checks, then runs the
 behavior-focused `tests/integration/test_gateway.py` suite.
 

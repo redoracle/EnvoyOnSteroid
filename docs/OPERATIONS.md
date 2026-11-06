@@ -99,3 +99,14 @@ Use synthetic probes and protect all diagnostic output. If a phase-2 test
 fails despite receiving HTTP 403, examine whether another CRS rule blocked
 during headers; the correct fix is to restore the intended body-processing
 path, not to weaken the assertion.
+
+## Coraza transaction correlation and negative controls
+
+The integration WAF oracle matches a specific rule ID and the intended
+`http_request_headers` or `http_request_body` denial **within one Coraza
+transaction ID**. Checking the number of rule and phase lines separately
+would incorrectly combine unrelated requests and can hide regressions.
+Offline `tests/test_waf_event_parsing.py` exercises this parser using
+adversarial synthetic logs (wrong phase, wrong rule, wrong transaction,
+allow actions, malformed logs). The parser does not echo sensitive WAF
+diagnostics into assertion failures.

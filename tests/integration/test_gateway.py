@@ -14,6 +14,8 @@ import unittest
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
+from test_support.waf_logs import denied_transactions, structured_access_records
+
 BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8080")
 PARSED = urlsplit(BASE_URL)
 if PARSED.scheme != "http" or PARSED.path not in ("", "/"):
@@ -74,22 +76,6 @@ def compose(*args):
 
 def logs():
     return compose("logs", "--no-color", "envoy")
-
-
-def structured_access_records(raw):
-    """Parse only Envoy JSON access logs, not raw Coraza diagnostic lines."""
-    records = []
-    for line in raw.splitlines():
-        start = line.find('{"')
-        if start < 0:
-            continue
-        try:
-            record = json.loads(line[start:])
-        except ValueError:
-            continue
-        if isinstance(record, dict) and "response_code" in record:
-            records.append(record)
-    return records
 
 
 def wait_for_backend(timeout=60):
@@ -213,30 +199,29 @@ class GatewayRequestHandlingTests(unittest.TestCase):
 
 class GatewayWAFTests(unittest.TestCase):
     def assert_denied_by_rule(self, path, rule_id, phase, **kwargs):
-        before = logs()
+        previous = denied_transactions(
+            logs(), rule_id=rule_id, phase=phase
+        )
         response = exchange(path, **kwargs)
         self.assertEqual(
             response.status, 403,
             f"Expected Coraza rule {rule_id} (phase={phase}) to deny; "
             f"received {response.status} {response.body[:160]!r}",
         )
-        token = f'[id "{rule_id}"]'
-        interrupt = f'phase="{phase}"'
         deadline = time.monotonic() + 6
         while time.monotonic() < deadline:
-            after = logs()
-            # Serial tests in an isolated Compose project: the log delta
-            # belongs to the one request under test. Avoid full log text in
-            # failure messages because Coraza can print request data.
-            if (
-                after.count(token) > before.count(token)
-                and after.count(interrupt) > before.count(interrupt)
-            ):
+            observed = denied_transactions(
+                logs(), rule_id=rule_id, phase=phase
+            )
+            # A new transaction must contain BOTH the target rule match
+            # and the denial/phase event under the same unique ID.
+            # This avoids combining different request logs accidentally.
+            if observed.difference(previous):
                 return
             time.sleep(0.2)
         self.fail(
-            f"HTTP 403 did not prove rule {rule_id}/{phase} was executed; "
-            "an unrelated WAF rule could have denied the request"
+            f"HTTP 403 did not prove rule {rule_id}/{phase} caused "
+            "a new correlated WAF denial"
         )
 
     def test_custom_uri_rule_blocks_in_phase_one(self):

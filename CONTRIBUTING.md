@@ -60,3 +60,8 @@ For forwarded traffic, validate actual backend response fields and payloads;
 for failures, test recovery as well as errors. Integration tests run only
 on the local, isolated Compose stack; unit tests remain network-free.
 Use synthetic payloads because WAF diagnostics may print matched values.
+
+The reusable parser in `test_support/waf_logs.py` is intentionally
+test-only; extend its offline negative examples whenever Coraza log
+formatting or test semantics change. Assertions must correlate rule,
+transaction and decision phase rather than merely counting occurrences.

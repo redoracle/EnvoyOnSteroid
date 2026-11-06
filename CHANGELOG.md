@@ -16,6 +16,8 @@ Git commits and merged PRs are **not** production releases.
 - Assert real upstream method, query and body response contracts, path
   normalization, header limits, and outage/recovery behavior.
 - Isolate Compose environments per CI run and limit failure diagnostics.
+- Correlate WAF matches and denial phases by Coraza transaction ID;
+  add deterministic parser tests that reject unrelated or malformed events.
 
 ### Security and reliability
 - Second audit PR hardens URI normalization, forwarded-header trust,

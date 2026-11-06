@@ -43,8 +43,8 @@ jobs:
       - name: Static configuration, repository policy and lint checks
         run: |
           bash -n tests/smoke.sh
-          .venv/bin/python -m compileall -q tests
-          .venv/bin/ruff check tests
+          .venv/bin/python -m compileall -q tests test_support
+          .venv/bin/ruff check tests test_support
           .venv/bin/python -m unittest discover -s tests -v
 
       - name: Validate Compose file
