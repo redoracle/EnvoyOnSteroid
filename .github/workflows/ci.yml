@@ -72,4 +72,9 @@ jobs:
           }
           trap cleanup EXIT
           docker compose up --detach --no-build
-          bash tests/smoke.sh
+          # Repeat against the same running stack to expose shared-state,
+          # cleanup and log-correlation flakiness.
+          for pass in 1 2; do
+            echo "Integration pass $pass of 2"
+            bash tests/smoke.sh
+          done

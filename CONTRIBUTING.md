@@ -65,3 +65,9 @@ The reusable parser in `test_support/waf_logs.py` is intentionally
 test-only; extend its offline negative examples whenever Coraza log
 formatting or test semantics change. Assertions must correlate rule,
 transaction and decision phase rather than merely counting occurrences.
+
+Runtime security tests intentionally inspect the effective Docker
+container HostConfig, rather than relying exclusively on Compose YAML.
+CI runs two full integration passes to expose shared-state regressions;
+tests must remain serial, restart the backend in `finally`, and never
+assume a clean log history between repeat passes.

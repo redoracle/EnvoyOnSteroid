@@ -110,3 +110,17 @@ Offline `tests/test_waf_event_parsing.py` exercises this parser using
 adversarial synthetic logs (wrong phase, wrong rule, wrong transaction,
 allow actions, malformed logs). The parser does not echo sensitive WAF
 diagnostics into assertion failures.
+
+## Repeated validation and effective container posture
+
+CI executes the integration suite **twice** against the same isolated Compose
+project; both passes exercise upstream outage/recovery and independent WAF
+transaction IDs. Repeated passes are a low-cost deterministic regression
+check, not a substitute for randomized parallelism, long-duration soak
+testing or production traffic replay.
+
+Runtime integration tests inspect **actual Docker container settings** via
+`docker inspect`, not just YAML declarations. Both demo services must run
+non-root, with read-only roots, all capabilities dropped, no-new-privileges
+and positive memory/PID limits. The Envoy host port must bind to loopback,
+and the demo backend must not publish host ports.

@@ -78,6 +78,24 @@ def logs():
     return compose("logs", "--no-color", "envoy")
 
 
+def inspect_service(name):
+    """Inspect effective Docker security policy, not just Compose YAML."""
+    container_id = compose("ps", "--quiet", name).strip()
+    if not container_id:
+        raise AssertionError(f"No running container for {name}")
+    proc = subprocess.run(
+        ("docker", "inspect", "--type", "container", container_id),
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=15,
+    )
+    result = json.loads(proc.stdout)
+    if len(result) != 1:
+        raise AssertionError(f"Expected one container for {name}")
+    return result[0]
+
+
 def wait_for_backend(timeout=60):
     deadline = time.monotonic() + timeout
     detail = "no response"
@@ -195,6 +213,36 @@ class GatewayRequestHandlingTests(unittest.TestCase):
                 return
             time.sleep(0.2)
         self.fail("No structured JSON access record emitted for HEAD probe")
+
+
+class RuntimeIsolationTests(unittest.TestCase):
+    def assert_service_is_unprivileged(self, service, expected_user):
+        inspected = inspect_service(service)
+        host = inspected["HostConfig"]
+        self.assertEqual(inspected["Config"]["User"], expected_user)
+        self.assertTrue(host["ReadonlyRootfs"])
+        self.assertFalse(host["Privileged"])
+        self.assertIn("ALL", [cap.upper() for cap in host["CapDrop"]])
+        self.assertTrue(
+            any(
+                option.startswith("no-new-privileges")
+                for option in (host.get("SecurityOpt") or [])
+            )
+        )
+        self.assertGreater(host["PidsLimit"], 0)
+        self.assertGreaterEqual(host["Memory"], 128 * 1024 * 1024)
+
+    def test_proxy_enforces_container_controls_and_loopback_bind(self):
+        self.assert_service_is_unprivileged("envoy", "101:101")
+        ports = inspect_service("envoy")["HostConfig"]["PortBindings"]
+        self.assertEqual(
+            ports["8080/tcp"][0]["HostIp"], "127.0.0.1"
+        )
+
+    def test_backend_enforces_controls_without_published_ports(self):
+        self.assert_service_is_unprivileged("backend", "10001:10001")
+        published = inspect_service("backend")["HostConfig"]["PortBindings"]
+        self.assertFalse(published)
 
 
 class GatewayWAFTests(unittest.TestCase):

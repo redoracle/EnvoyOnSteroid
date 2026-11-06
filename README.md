@@ -81,8 +81,10 @@ Expected status codes:
 | Request headers above 32 KiB | 431 | Oversized header protection |
 
 The integration tests additionally validate the echoed backend JSON/form
-payloads, rule-specific WAF denials and recovery after stopping the demo
-backend. WAF rule attribution comes from the isolated Compose service logs:
+payloads, rule-specific WAF denials, **effective Docker runtime restrictions**
+(including localhost-only host-port mapping), and recovery after stopping
+the demo backend. CI repeats the entire integration suite twice against one
+stack to catch shared-state and cleanup regressions. WAF rule attribution comes from the isolated Compose service logs:
 a generic HTTP 403 does **not** prove request-body inspection.
 The test oracle correlates matched rule IDs and denial phases to the same
 Coraza transaction ID, with offline negative tests protecting the parser. The test

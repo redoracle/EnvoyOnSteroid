@@ -18,6 +18,8 @@ Git commits and merged PRs are **not** production releases.
 - Isolate Compose environments per CI run and limit failure diagnostics.
 - Correlate WAF matches and denial phases by Coraza transaction ID;
   add deterministic parser tests that reject unrelated or malformed events.
+- Assert live Docker container runtime isolation and localhost-only
+  publishing; run the integration suite twice to detect state leakage.
 
 ### Security and reliability
 - Second audit PR hardens URI normalization, forwarded-header trust,
