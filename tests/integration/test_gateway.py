@@ -76,6 +76,22 @@ def logs():
     return compose("logs", "--no-color", "envoy")
 
 
+def structured_access_records(raw):
+    """Parse only Envoy JSON access logs, not raw Coraza diagnostic lines."""
+    records = []
+    for line in raw.splitlines():
+        start = line.find('{"')
+        if start < 0:
+            continue
+        try:
+            record = json.loads(line[start:])
+        except ValueError:
+            continue
+        if isinstance(record, dict) and "response_code" in record:
+            records.append(record)
+    return records
+
+
 def wait_for_backend(timeout=60):
     deadline = time.monotonic() + timeout
     detail = "no response"
@@ -163,7 +179,7 @@ class GatewayRequestHandlingTests(unittest.TestCase):
     def test_structured_access_logs_exclude_synthetic_request_canaries(self):
         # Only structured JSON access logs are intentionally privacy-scoped.
         # Raw Coraza WASM diagnostics can contain matched values/URIs.
-        before = logs()
+        baseline = len(structured_access_records(logs()))
         response = exchange(
             "/get?qa_secret_canary=synthetic-only",
             headers={"Cookie": "qa_cookie_canary=synthetic-only"},
@@ -171,24 +187,9 @@ class GatewayRequestHandlingTests(unittest.TestCase):
         self.assertEqual(response.status, 200, response.body[:120])
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline:
-            after = logs()
-            if after == before:
-                time.sleep(0.2)
-                continue
-            delta = after.removeprefix(before)
-            records = []
-            for line in delta.splitlines():
-                candidate = line.split(" | ", 1)[-1].strip()
-                if not candidate.startswith("{"):
-                    continue
-                try:
-                    record = json.loads(candidate)
-                except ValueError:
-                    continue
-                if isinstance(record, dict) and "response_code" in record:
-                    records.append(record)
-            if records:
-                for record in records:
+            new_records = structured_access_records(logs())[baseline:]
+            if new_records:
+                for record in new_records:
                     self.assertEqual(record["response_code"], 200)
                     self.assertEqual(record["method"], "GET")
                     self.assertNotIn("qa_secret_canary", json.dumps(record))
@@ -196,7 +197,7 @@ class GatewayRequestHandlingTests(unittest.TestCase):
                     self.assertNotIn("synthetic-only", json.dumps(record))
                 return
             time.sleep(0.2)
-        self.fail("No structured access log was emitted for the benign request")
+        self.fail("No structured JSON access record emitted for benign GET")
 
 
 class GatewayWAFTests(unittest.TestCase):
