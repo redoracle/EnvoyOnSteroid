@@ -1,0 +1,65 @@
+# Release and dependency management
+
+**No CI workflow publishes artifacts or images automatically.** A green
+workflow run validates this reference stack, not production certification.
+
+## Version inventory (checked November 5, 2026)
+
+| Component | Reviewed version | Role |
+| --- | --- | --- |
+| Envoy | v1.40.2 | Runtime image |
+| Coraza Proxy-WASM | 0.6.0 | WASM image; embeds CRS v4.14.0 |
+| go-httpbin | v2.26.0 | Demo backend (includes WebSocket DoS fix) |
+| PyYAML | 6.0.3 | CI/static tests |
+| Ruff | 0.17.4 | CI Python lint |
+| actions/checkout | v7.0.1 | Commit-SHA pinned CI action |
+| actions/setup-python | v7.1.0 | Commit-SHA pinned CI action |
+
+These are the most recently confirmed compatible upstream releases at the
+date above, **not** a perpetual guarantee of currency. Coraza Proxy-WASM
+includes its own engine and OWASP CRS, so the standalone CRS cannot be
+updated simply by bumping a file version.
+
+## Dependency update procedure
+
+1. Read upstream release notes, advisories, compatibility guidance, and
+   changes to the supported CPU/runtime architecture.
+2. Pin GitHub Actions by their full verified commit SHA and record their
+   human-readable release tag in a comment.
+3. Pin OCI images by version for local development. Record and use
+   reviewed immutable `sha256` digests for production promotion.
+4. Run Python lint, configuration unit tests, shell checks, Compose validation, Docker
+   build, Envoy bootstrap validation and positive/negative WAF smoke tests.
+5. Use realistic payload sizes, content types, concurrency and durations
+   to assess latency, memory growth, false positives, and false negatives.
+6. Never auto-merge risky WAF/plugin upgrades without human review.
+7. Update README, security policy and migration notes if behavior changes.
+
+## Pre-merge checklist
+
+- [ ] GitHub Actions checks pass on the final PR commit.
+- [ ] Security, compatibility, upstream provenance and risk reviewed.
+- [ ] Dependency changes and docs are in the same reviewable diff.
+- [ ] A real reviewer has approved significant security-sensitive changes.
+
+## Pre-production checklist
+
+- [ ] Real upstream, TLS, trusted proxy settings, allowed hosts and ingress
+      controls are explicitly configured and verified.
+- [ ] WAF exclusions and body-size limits are tuned against representative
+      traffic, starting in detection-only mode as appropriate.
+- [ ] OCI digests, upstream vulnerability review and supply-chain evidence
+      are recorded.
+- [ ] Load/soak and fault-injection tests cover the WASM filter's stability,
+      memory usage, throughput and tail latency.
+- [ ] Monitoring/alerts, secrets, WAF audit-log retention and rollback
+      procedures have been exercised.
+- [ ] A release tag/image promotion is approved *after*, not before, these
+      gates are complete.
+
+## Versioning and rollback
+
+Do not equate a GitHub PR or commit with a release. Use intentional release
+tags, record the full Git commit and deployed OCI digests, and retain the
+previous known-good manifest for rollback. Avoid publishing an unreviewed
+`latest` image or automatically deploying Dependabot PRs.

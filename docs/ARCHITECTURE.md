@@ -32,6 +32,9 @@ The WAF JSON is embedded in the YAML `StringValue` for the WASM filter and is
 validated as JSON by the test suite. The WAF settings are static at boot; edits
 require rebuilding the image. Do not mount untrusted configuration over it.
 
+See the [threat model](THREAT_MODEL.md) for explicit attacker assumptions
+and [release process](RELEASE.md) for promotion gates.
+
 ## Production hardening checklist
 
 - Replace the demo backend and add TLS termination with a documented trust
@@ -54,3 +57,36 @@ The v3 bootstrap targets Envoy `v1.40.2`; the Coraza plugin is `0.6.0` with
 embedded CRS `4.14.0`. These components are not a semver-coupled product.
 Every version bump needs the automated bootstrap + end-to-end smoke tests and
 manual throughput/soak testing. Passing unit tests alone is insufficient.
+
+## Normalization, client identity, and observability
+
+HTTP paths are normalized and adjacent slashes merged **before** the WAF and
+upstream selection. Escaped slash/backslash characters produce HTTP 400; this
+intentionally rejects ambiguous paths rather than letting the WAF and backend
+interpret them differently. Applications that require encoded separators must
+design and test an alternative policy instead of silently disabling it.
+The example is a direct-entry edge proxy: `use_remote_address: true` with
+`xff_num_trusted_hops: 0` means clients cannot assert a trusted identity
+through unverified forwarding headers. Configure a different trust boundary
+explicitly when deploying behind a trusted ingress.
+
+Envoy writes low-cardinality JSON access logs to stdout: timestamp, method,
+status, status detail, duration, upstream cluster, and response flags.
+Deliberately absent: raw URI, query parameters, client address, request
+headers, and cookies. WAF internal logs can include matched payloads;
+set log retention and access policies appropriate to sensitive security data.
+
+The demo Compose stack limits PIDs and memory on both services and gives the
+backend the same read-only, non-root, dropped-capabilities posture as Envoy.
+These limits are illustrative, not production sizing guidance. In particular,
+soak-test the WASM filter under real traffic before setting resource ceilings.
+
+## Header/time resource guardrails
+
+The sample bounds request headers to **32 KiB** (HTTP 431), the header
+receive window to **10 seconds**, idle streams to **60 seconds**, and whole
+requests to **30 seconds**. Together with container PID/memory quotas these
+reduce some untrusted-client resource exhaustion. They are not a substitute
+for application-layer rate limits, network controls, or attack-resilient
+capacity planning. Large cookies and streaming workloads may require
+documented, separately verified exceptions.

@@ -14,6 +14,37 @@ static_resources:
                 "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
                 stat_prefix: ingress_http
                 codec_type: AUTO
+                # The demonstration is internet-edge-like: never trust inbound XFF.
+                # Deployments behind an authenticated reverse proxy must review
+                # the trusted-hop configuration and source address semantics.
+                use_remote_address: true
+                xff_num_trusted_hops: 0
+                # Normalize before Coraza rules and route matching; reject
+                # encoded slash/backslash ambiguity instead of forwarding it.
+                normalize_path: true
+                merge_slashes: true
+                path_with_escaped_slashes_action: REJECT_REQUEST
+                # Intentional low-cardinality access logs: no URL, headers,
+                # cookies, query strings, or client IP addresses are recorded.
+                access_log:
+                  - name: envoy.access_loggers.stdout
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
+                      log_format:
+                        json_format:
+                          timestamp: "%START_TIME%"
+                          method: "%REQ(:METHOD)%"
+                          response_code: "%RESPONSE_CODE%"
+                          response_code_details: "%RESPONSE_CODE_DETAILS%"
+                          duration_ms: "%DURATION%"
+                          upstream_cluster: "%UPSTREAM_CLUSTER%"
+                          response_flags: "%RESPONSE_FLAGS%"
+                # Bound header memory and slow-header connections from untrusted clients.
+                # These demonstration limits require app-specific tuning for large cookies
+                # and long-running or streaming requests.
+                max_request_headers_kb: 32
+                request_headers_timeout: 10s
+                stream_idle_timeout: 60s
                 common_http_protocol_options:
                   idle_timeout: 60s
                 request_timeout: 30s
@@ -46,7 +77,8 @@ static_resources:
                                   "SecRuleEngine On",
                                   "Include @crs-setup-conf",
                                   "Include @owasp_crs/*.conf",
-                                  "SecRule REQUEST_URI \"@streq /__waf_test_block\" \"id:1000001,phase:1,deny,status:403,log\""
+                                  "SecRule REQUEST_URI \"@streq /__waf_test_block\" \"id:1000001,phase:1,deny,status:403,log\"",
+                                  "SecRule REQUEST_BODY \"@contains __waf_test_payload\" \"id:1000002,phase:2,deny,status:403,log\""
                                 ]
                               },
                               "default_directives": "default"

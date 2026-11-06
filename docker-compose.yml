@@ -5,6 +5,15 @@ services:
     image: mccutchen/go-httpbin:2.26.0
     expose:
       - "8080"
+    # The example backend is not exempt from container hardening.
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    pids_limit: 128
+    mem_limit: 256m
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
 
@@ -19,6 +28,9 @@ services:
       - "${ENVOY_BIND_ADDRESS:-127.0.0.1}:8080:8080"
     user: "101:101"
     read_only: true
+    pids_limit: 256
+    # Example limit only; production capacity must be load-tested.
+    mem_limit: 1g
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m
     cap_drop:

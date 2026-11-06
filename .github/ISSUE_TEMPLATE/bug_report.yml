@@ -1,0 +1,52 @@
+name: Bug report
+description: Report a reproducible defect in this reference deployment
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never include real user data, credentials, customer traffic or
+        security vulnerabilities in public issues; see SECURITY.md.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, CPU architecture, Docker Engine and Compose versions
+      placeholder: "Ubuntu 24.04, amd64, Docker 28, Compose 2.x"
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Git revision and image versions
+      placeholder: "Commit SHA and pinned image tags"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps using synthetic data
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and sanitized logs
+    validations:
+      required: true
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I checked the README and operations runbook.
+          required: true
+        - label: I removed secrets and personal data.
+          required: true

@@ -1,0 +1,6 @@
+# Review ownership. Branch protection must be configured separately.
+* @redoracle
+/.github/ @redoracle
+/Dockerfile @redoracle
+/envoy.yaml @redoracle
+/SECURITY.md @redoracle

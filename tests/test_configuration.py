@@ -99,5 +99,73 @@ class ConfigurationTests(unittest.TestCase):
         self.assertNotIn("docker login", (ROOT / ".github/workflows/ci.yml").read_text())
 
 
+    def test_untrusted_forwarded_ip_and_ambiguous_paths_rejected(self):
+        self.assertTrue(self.http_config["use_remote_address"])
+        self.assertEqual(self.http_config["xff_num_trusted_hops"], 0)
+        self.assertTrue(self.http_config["normalize_path"])
+        self.assertTrue(self.http_config["merge_slashes"])
+        self.assertEqual(
+            self.http_config["path_with_escaped_slashes_action"], "REJECT_REQUEST"
+        )
+
+    def test_structured_access_logs_avoid_request_pii(self):
+        logs = self.http_config["access_log"]
+        self.assertEqual(len(logs), 1)
+        self.assertEqual(logs[0]["name"], "envoy.access_loggers.stdout")
+        cfg = logs[0]["typed_config"]
+        self.assertEqual(
+            cfg["@type"],
+            "type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog",
+        )
+        fields = cfg["log_format"]["json_format"]
+        self.assertIn("response_code", fields)
+        self.assertIn("duration_ms", fields)
+        self.assertIn("response_flags", fields)
+        self.assertNotIn("%REQ(:PATH)%", fields.values())
+        self.assertNotIn("%DOWNSTREAM_REMOTE_ADDRESS%", fields.values())
+        self.assertNotIn("%REQ(X-FORWARDED-FOR)%", fields.values())
+
+    def test_phase_two_waf_body_rule_is_loaded(self):
+        filters = self.http_config["http_filters"]
+        rules = json.loads(filters[0]["typed_config"]["config"]["configuration"]["value"])
+        directives = rules["directives_map"][rules["default_directives"]]
+        self.assertTrue(any("SecRule REQUEST_BODY" in rule and
+                            "__waf_test_payload" in rule for rule in directives))
+
+    def test_backend_and_proxy_limits_and_isolation(self):
+        backend = self.compose["services"]["backend"]
+        proxy = self.compose["services"]["envoy"]
+        for service in (backend, proxy):
+            self.assertTrue(service["read_only"])
+            self.assertEqual(service["cap_drop"], ["ALL"])
+            self.assertIn("no-new-privileges:true", service["security_opt"])
+            self.assertGreater(service["pids_limit"], 0)
+            self.assertIn("mem_limit", service)
+        self.assertEqual(backend["user"], "10001:10001")
+        self.assertNotIn("ports", backend)
+
+    def test_header_limits_and_slow_client_timeouts(self):
+        self.assertEqual(self.http_config["max_request_headers_kb"], 32)
+        self.assertEqual(self.http_config["request_headers_timeout"], "10s")
+        self.assertEqual(self.http_config["stream_idle_timeout"], "60s")
+        self.assertEqual(self.http_config["request_timeout"], "30s")
+
+    def test_ci_uses_current_sha_pinned_actions_and_fixed_runner(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+        self.assertIn("runs-on: ubuntu-24.04", workflow)
+        self.assertIn("persist-credentials: false", workflow)
+        self.assertIn(
+            "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            workflow,
+        )
+        self.assertIn(
+            "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+            workflow,
+        )
+        self.assertIn("cancel-in-progress: true", workflow)
+        self.assertIn("ruff check tests", workflow)
+        self.assertIn("bash -n tests/smoke.sh", workflow)
+
+
 if __name__ == "__main__":
     unittest.main()
