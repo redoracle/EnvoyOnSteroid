@@ -118,3 +118,26 @@ contract checks the **actual** echoed backend headers and origin to catch
 spurious trust at the application boundary. Behind a verified load
 balancer/TLS ingress, adjust this direct-entry policy deliberately and
 verify it with real request traces.
+
+## Phase-2 delivery barrier and request buffering
+
+**Discovered security finding:** an HTTP 403 from the Coraza body rule
+did not guarantee the JSON POST was withheld from the demo backend.
+The initial backend-observation test captured a `400 POST` upstream
+access-log entry even though Envoy returned 403. The WAF filter must
+not be treated as a transactional delivery barrier by itself.
+
+Filter order is now:
+`Coraza Proxy-WASM` → `envoy.filters.http.buffer` → `router`.
+Coraza sees request headers and body data before the buffer filter.
+The buffer filter prevents downstream-to-upstream routing until the
+body is fully received, so a Coraza denial can interrupt without
+forwarding the body. Integration tests verify both **rule attribution**
+and the absence of denied request markers in backend access logs
+after an allowed request confirms log flushing.
+
+The 128 KiB buffering limit is a deliberate example cap and may
+conflict with application-specific WAF body inspection limits, uploads,
+chunked transfer, WebSockets, gRPC streams, long-lived requests, or
+high concurrency. Review memory costs, accepted content types and
+the correct request-size response codes when adapting this design.

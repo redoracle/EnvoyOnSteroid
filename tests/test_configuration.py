@@ -33,7 +33,11 @@ class ConfigurationTests(unittest.TestCase):
         filters = self.http_config["http_filters"]
         self.assertEqual(
             [item["name"] for item in filters],
-            ["envoy.filters.http.wasm", "envoy.filters.http.router"],
+            [
+                "envoy.filters.http.wasm",
+                "envoy.filters.http.buffer",
+                "envoy.filters.http.router",
+            ],
         )
         wasm = filters[0]["typed_config"]
         self.assertEqual(
@@ -51,6 +55,18 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIn("Include @crs-setup-conf", rules)
         self.assertIn("Include @owasp_crs/*.conf", rules)
         self.assertTrue(any("/__waf_test_block" in line for line in rules))
+
+    def test_buffer_stops_upstream_before_body_inspection_finishes(self):
+        filters = self.http_config["http_filters"]
+        self.assertEqual(filters[1]["name"], "envoy.filters.http.buffer")
+        self.assertEqual(
+            filters[1]["typed_config"]["@type"],
+            "type.googleapis.com/envoy.extensions.filters.http.buffer.v3.Buffer",
+        )
+        self.assertEqual(
+            filters[1]["typed_config"]["max_request_bytes"]["value"],
+            128 * 1024,
+        )
 
     def test_route_cluster_and_compose_backend_match(self):
         cluster = self.envoy["static_resources"]["clusters"][0]

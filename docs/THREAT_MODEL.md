@@ -87,3 +87,18 @@ that trusts them. The demonstration route strips those unverified headers
 and tests the actual backend's resulting view. This policy is specific to
 the direct-entry localhost example; multi-proxy deployments must establish
 their own authenticated trust boundary and end-to-end header contract.
+
+## Partial upstream delivery despite client-facing WAF denial
+
+A WAF's response action can arrive after downstream request data has
+already been streamed toward the upstream. The audit detected a
+blocked JSON POST that still appeared as a `400 POST` in backend logs.
+This is material for services with side effects even though the client
+saw HTTP 403.
+
+The reference now places Envoy's request buffer after Coraza and
+before the router and tests non-forwarding with direct backend log
+observations. This mitigates early upstream delivery for bounded,
+non-streaming requests; it does not provide application-level
+transactions, replay immunity, or a guarantee for unvalidated
+production traffic.

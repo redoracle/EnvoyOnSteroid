@@ -149,3 +149,21 @@ form/JSON POST requests through the real Envoy/Coraza stack. It verifies
 eight echoed query values plus three distinct transaction-correlated
 phase-2 denials for **each** request-body rule. This is a cross-request
 state-isolation regression, not load or performance certification.
+
+## Request buffering and upstream delivery safety
+
+A client-facing Coraza 403 is **not proof** that the upstream did not
+receive the rejected request. The integration suite now tests the
+backend's own request logs and uses an allowed GET as a logging
+barrier after each denied form/JSON request. Envoy's request buffer
+filter sits immediately after Coraza and before the router to prevent
+upstream transmission of inspected request bodies until they are
+complete.
+
+The reference buffers at most **128 KiB** per request; this is not
+compatible with streaming uploads, WebSockets or streaming gRPC
+without changing the architecture. Large payloads may receive a
+4xx error, and resource pressure grows with concurrent requests.
+Test content-length, chunked request handling and application
+compatibility before increasing this bound. For a production ingress,
+use load/capacity testing and explicitly document memory budgets.

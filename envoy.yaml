@@ -105,6 +105,15 @@ static_resources:
                           code:
                             local:
                               filename: /etc/envoy/coraza.wasm
+                  # Coraza must examine incoming body chunks first. Buffer
+                  # *after* Coraza but before the router, ensuring the
+                  # upstream cannot receive request data before inspection.
+                  # This reference does not support streaming/large uploads.
+                  - name: envoy.filters.http.buffer
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.buffer.v3.Buffer
+                      max_request_bytes:
+                        value: 131072
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router

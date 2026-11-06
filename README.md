@@ -38,6 +38,10 @@ Envoy HTTP listener (normalization, header/time limits, access logging)
 Coraza Proxy-WASM + embedded OWASP CRS
    |
    v
+Envoy request buffer (128 KiB maximum; no upstream forwarding
+until the complete inspected request is available)
+   |
+   v
 Envoy router --> backend:8080 (private go-httpbin demo)
 
 Envoy admin: 127.0.0.1:9901 INSIDE container only
@@ -87,6 +91,11 @@ payloads, rule-specific WAF denials, **effective Docker runtime restrictions**
 the demo backend. CI repeats the entire integration suite twice against one
 stack to catch shared-state and cleanup regressions. WAF rule attribution comes from the isolated Compose service logs:
 a generic HTTP 403 does **not** prove request-body inspection.
+An additional Envoy request-buffer filter sits **between Coraza and the
+router**, preventing streaming request bodies into the backend before
+Coraza can decide whether to deny them. The maximum buffered body is
+128 KiB; larger requests and streaming/upgrade workloads are not
+supported by this example without a redesigned, separately tested policy.
 The test oracle correlates matched rule IDs and denial phases to the same
 Coraza transaction ID, with offline negative tests protecting the parser. The test
 entrypoint `tests/smoke.sh` performs readiness checks, then runs the

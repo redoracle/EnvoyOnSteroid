@@ -25,6 +25,9 @@ Git commits and merged PRs are **not** production releases.
 - Require denied request-body probes to be absent from actual backend
   request logs after a successful request barrier; add a controlled
   parallel allow/deny traffic regression with transaction attribution.
+- Add a bounded Envoy HTTP buffer between Coraza and the router after
+  discovering that a WAF-denied JSON POST still reached the backend;
+  document streaming/upload compatibility limitations.
 
 ### Security and reliability
 - Second audit PR hardens URI normalization, forwarded-header trust,

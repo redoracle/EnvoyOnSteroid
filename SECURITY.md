@@ -61,6 +61,26 @@ and 30-second complete-request timeout. These limits reduce some low-cost
 resource exhaustion attacks; they are not DDoS protection or rate limiting.
 Large cookies, slow uploads and long-lived streams need compatibility tests.
 
+## Phase-2 enforcement and upstream non-forwarding
+
+An earlier integration probe established that a JSON request returning
+403 from Coraza could still reach the backend and generate a 400
+response. Coraza's WASM decision alone is therefore insufficient to
+establish an upstream *no-forwarding* guarantee.
+
+The reference places Envoy's HTTP **buffer filter immediately after the
+Coraza WASM filter and before the terminal router**. The buffer filter
+holds a request back from the backend until complete request data is
+available; Coraza evaluates body data before it reaches the buffering
+filter. CI rejects any form/JSON request that reaches the backend after
+a WAF 403 by waiting for an allowed backend logging barrier.
+
+The enforced demonstration buffer limit is **128 KiB**. It disallows
+large uploads, gRPC/WebSocket streaming and other streaming workloads
+as configured; those require a different architecture and tests.
+Buffering also increases per-request memory pressure. Do not disable
+it to silence the non-forwarding regression.
+
 ## Downstream identity and forwarded-header boundary
 
 The direct-entry demonstration explicitly strips unverified client-provided
