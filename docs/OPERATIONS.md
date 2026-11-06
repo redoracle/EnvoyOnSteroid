@@ -167,3 +167,16 @@ without changing the architecture. Large payloads may receive a
 Test content-length, chunked request handling and application
 compatibility before increasing this bound. For a production ingress,
 use load/capacity testing and explicitly document memory budgets.
+
+## Transfer-encoding and size-boundary regressions
+
+The real-container suite sends valid JSON as multiple **chunked HTTP/1.1**
+frames and checks the payload echoed by go-httpbin. It also splits
+synthetic malicious form and JSON bodies across chunks, requiring the
+same WAF rule/phase evidence and absence of upstream delivery as for
+ordinary fixed-length POST requests.
+
+A request body larger than the configured 128 KiB Envoy buffer must
+receive **HTTP 413**. Do not relax that guard to allow oversized data
+silently; explicitly assess application requirements, Coraza inspection
+limits and per-request memory budgets before changing it.

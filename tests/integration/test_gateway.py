@@ -49,13 +49,19 @@ class Response:
         return json.loads(self.body)
 
 
-def exchange(path, *, method="GET", body=None, headers=None, timeout=6):
+def exchange(
+    path, *, method="GET", body=None, headers=None, timeout=6,
+    chunked=False,
+):
     """Send a real HTTP request preserving raw path encoding."""
     connection = http.client.HTTPConnection(HOST, PORT, timeout=timeout)
     request_headers = {"Accept": "application/json"}
     request_headers.update(headers or {})
     try:
-        connection.request(method, path, body=body, headers=request_headers)
+        connection.request(
+            method, path, body=body, headers=request_headers,
+            encode_chunked=chunked,
+        )
         response = connection.getresponse()
         payload = response.read(1024 * 1024 + 1)
         if len(payload) > 1024 * 1024:
@@ -151,6 +157,17 @@ class GatewayContractTests(unittest.TestCase):
         self.assertEqual(document["method"], "POST")
         self.assertEqual(document["json"], payload)
 
+    def test_chunked_json_post_preserves_body_across_segments(self):
+        chunks = [b'{"message":"ben', b'ign","count":3}']
+        response = exchange(
+            "/post", method="POST", body=iter(chunks), chunked=True,
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(response.status, 200, response.body[:160])
+        document = response.as_json()
+        self.assertEqual(document["method"], "POST")
+        self.assertEqual(document["json"], {"message": "benign", "count": 3})
+
     def test_form_post_preserves_fields_and_method(self):
         response = exchange(
             "/post", method="POST", body="message=benign&count=2",
@@ -183,6 +200,15 @@ class GatewayRequestHandlingTests(unittest.TestCase):
         self.assertEqual(
             response.as_json()["args"]["probe"], ["slashes"]
         )
+
+    def test_body_exceeding_buffer_limit_is_rejected(self):
+        # Exceed the 128 KiB Envoy buffer; oversized data must be rejected.
+        payload = json.dumps({"message": "a" * (128 * 1024)})
+        response = exchange(
+            "/post?qa_body_limit=1", method="POST", body=payload,
+            headers={"Content-Type": "application/json"}, timeout=10,
+        )
+        self.assertEqual(response.status, 413, response.body[:120])
 
     def test_headers_above_configured_limit_are_rejected(self):
         response = exchange(
@@ -388,14 +414,15 @@ class GatewayWAFTests(unittest.TestCase):
         )
 
     def assert_denied_before_upstream(
-        self, path, *, marker, rule_id, body, content_type
+        self, path, *, marker, rule_id, body, content_type,
+        chunked=False,
     ):
         """Use an allowed backend request as a log barrier after WAF deny."""
         baseline_logs = backend_logs()
         blocked_before = backend_uri_marker_hits(baseline_logs, marker)
         self.assert_denied_by_rule(
             path, rule_id, "http_request_body",
-            method="POST", body=body,
+            method="POST", body=body, chunked=chunked,
             headers={"Content-Type": content_type},
         )
         barrier = f"qa_barrier_{rule_id}"
@@ -427,6 +454,24 @@ class GatewayWAFTests(unittest.TestCase):
             marker="qa_blocked_json", rule_id="1000003",
             body=json.dumps({"message": "__waf_test_payload"}),
             content_type="application/json",
+        )
+
+    def test_chunked_form_body_is_denied_without_backend_delivery(self):
+        self.assert_denied_before_upstream(
+            "/post?qa_case=qa_blocked_chunked_form",
+            marker="qa_blocked_chunked_form", rule_id="1000002",
+            body=iter([b"message=__waf_", b"test_payload"]),
+            content_type="application/x-www-form-urlencoded",
+            chunked=True,
+        )
+
+    def test_chunked_json_body_is_denied_without_backend_delivery(self):
+        self.assert_denied_before_upstream(
+            "/post?qa_case=qa_blocked_chunked_json",
+            marker="qa_blocked_chunked_json", rule_id="1000003",
+            body=iter([b'{"message":"__waf_', b'test_payload"}']),
+            content_type="application/json",
+            chunked=True,
         )
 
     def test_crs_xss_detection_not_just_generic_http_403(self):

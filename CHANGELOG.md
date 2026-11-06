@@ -28,6 +28,8 @@ Git commits and merged PRs are **not** production releases.
 - Add a bounded Envoy HTTP buffer between Coraza and the router after
   discovering that a WAF-denied JSON POST still reached the backend;
   document streaming/upload compatibility limitations.
+- Verify chunked form/JSON bodies cannot evade phase-2 inspection and
+  exercise 128 KiB request-body oversize rejection.
 
 ### Security and reliability
 - Second audit PR hardens URI normalization, forwarded-header trust,
