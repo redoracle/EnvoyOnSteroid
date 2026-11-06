@@ -136,9 +136,9 @@ read-only repository access. A green run proves basic integration behavior,
 
 | Component | Pinned version | Scope |
 | --- | --- | --- |
-| Envoy | `envoyproxy/envoy:v1.40.2` | Proxy OCI image |
-| Coraza Proxy-WASM | `ghcr.io/corazawaf/coraza-proxy-wasm:0.6.0` | WASM OCI image; includes Coraza 3.3.3 / CRS 4.14.0 |
-| go-httpbin | `mccutchen/go-httpbin:2.26.0` | Local-only backend |
+| Envoy | `envoyproxy/envoy:v1.40.2@sha256:8de97e65…` | Immutable proxy image manifest |
+| Coraza Proxy-WASM | `ghcr.io/corazawaf/coraza-proxy-wasm:0.6.0@sha256:d66f9448…` | Immutable WASM image; embeds Coraza 3.3.3 / CRS 4.14.0 |
+| go-httpbin | `mccutchen/go-httpbin:2.26.0@sha256:873b4fdb…` | Immutable demo backend |
 | PyYAML | `6.0.3` | Developer / CI tests |
 | Ruff | `0.17.4` | CI-only Python lint |
 | actions/checkout | `v7.0.1` | Immutable commit SHA in workflow |
@@ -147,7 +147,11 @@ read-only repository access. A green run proves basic integration behavior,
 These versions were reviewed on November 5, 2026. The **upstream Coraza WASM
 release warns about potential memory leaks and performance degradation**.
 The embedded CRS cannot be upgraded independently from the WASM image.
-Container tags are not immutable; pin audited OCI digests for production.
+All runtime images are pinned by **OCI manifest digest** in
+[images.lock.json](images.lock.json) while preserving human-readable
+release tags. CI resolves upstream registry tags and fails on digest
+drift, and generates an SPDX SBOM and BuildKit provenance attestation
+for the local build. This does not verify upstream publisher signatures.
 
 ## Configuration boundaries
 

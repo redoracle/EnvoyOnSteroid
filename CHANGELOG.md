@@ -10,6 +10,11 @@ Git commits and merged PRs are **not** production releases.
   support guidance, CODEOWNERS, and editor/Git attributes.
 - Threat model, release checklist, automated repository hygiene checks.
 
+### OCI supply-chain integrity
+- Pin all three runtime image references by reviewed immutable OCI digest.
+- Detect upstream tag drift and preserve locally generated SPDX SBOM and
+  SLSA provenance attestations, with blob integrity checks.
+
 ### Test-suite reliability
 - Replace ambiguous phase-2 smoke probes with exact Coraza rule IDs for
   URL-encoded form and JSON request bodies; verify the interruption phase.

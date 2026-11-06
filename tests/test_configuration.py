@@ -110,7 +110,8 @@ class ConfigurationTests(unittest.TestCase):
         self.assertNotIn("apt-get", self.dockerfile)
         self.assertEqual(
             self.compose["services"]["backend"]["image"],
-            "mccutchen/go-httpbin:2.26.0",
+            "mccutchen/go-httpbin:2.26.0@" +
+            "sha256:873b4fdb27fe7cc66fa12cb9362574e1b0bf31df7ca8a71b2502988327a0b8a4",
         )
 
     def test_every_runtime_image_has_an_explicit_version(self):

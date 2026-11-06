@@ -110,3 +110,17 @@ CI/log artifacts as sensitive.
 
 See [release management](RELEASE.md), [operations](OPERATIONS.md),
 [architecture](ARCHITECTURE.md) and the [threat model](THREAT_MODEL.md).
+
+## OCI dependency provenance and SBOM gates
+
+The three runtime inputs are pinned by immutable OCI image manifest digest,
+and [images.lock.json](../images.lock.json) records their reviewed tag
+mapping. CI fails on upstream tag drift and builds an **unpublished**
+OCI artifact with SPDX SBOM and BuildKit SLSA provenance. The offline
+verifier validates SHA-256 blob integrity and the links between the
+attestations and the image. CI retains a compact JSON evidence artifact,
+not the large image tarball.
+
+This **build-generated provenance** is not a cryptographically authenticated
+upstream publisher identity, an independent rebuild, or a vulnerability
+assessment. Those remain required before production promotion.

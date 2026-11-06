@@ -26,8 +26,9 @@ updated simply by bumping a file version.
    changes to the supported CPU/runtime architecture.
 2. Pin GitHub Actions by their full verified commit SHA and record their
    human-readable release tag in a comment.
-3. Pin OCI images by version for local development. Record and use
-   reviewed immutable `sha256` digests for production promotion.
+3. Pin all runtime images by reviewed OCI sha256 manifest digests.
+   [images.lock.json](../images.lock.json) is the source of truth;
+   CI fails if an upstream registry retags one without review.
 4. Run Python lint, configuration unit tests, shell checks, Compose validation, Docker
    build, Envoy bootstrap validation and positive/negative WAF smoke tests.
 5. Use realistic payload sizes, content types, concurrency and durations
@@ -48,8 +49,9 @@ updated simply by bumping a file version.
       controls are explicitly configured and verified.
 - [ ] WAF exclusions and body-size limits are tuned against representative
       traffic, starting in detection-only mode as appropriate.
-- [ ] OCI digests, upstream vulnerability review and supply-chain evidence
-      are recorded.
+- [x] Immutable runtime OCI image digests recorded and tag drift tested.
+- [ ] Upstream image publisher signatures and vulnerability review verified.
+- [ ] The locally generated SBOM/provenance artifact reviewed for the release.
 - [ ] Load/soak and fault-injection tests cover the WASM filter's stability,
       memory usage, throughput and tail latency.
 - [ ] Monitoring/alerts, secrets, WAF audit-log retention and rollback

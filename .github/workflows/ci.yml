@@ -43,8 +43,8 @@ jobs:
       - name: Static configuration, repository policy and lint checks
         run: |
           bash -n tests/smoke.sh
-          .venv/bin/python -m compileall -q tests test_support
-          .venv/bin/ruff check tests test_support
+          .venv/bin/python -m compileall -q tests test_support scripts
+          .venv/bin/ruff check tests test_support scripts
           .venv/bin/python -m unittest discover -s tests -v
 
       - name: Validate Compose file
@@ -109,6 +109,7 @@ jobs:
             printf 'UPSTREAM_DIGEST %s %s\n' "$image" "$digest"
             printf '%s %s\n' "$image" "$digest" >> build-evidence/upstream-images.tsv
           done
+          python3 scripts/verify_image_lock.py build-evidence/upstream-images.tsv
 
       - name: Build OCI artifact with SBOM and provenance
         run: |

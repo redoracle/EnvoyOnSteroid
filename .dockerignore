@@ -8,4 +8,8 @@ SECURITY.md
 docs
 tests
 requirements-dev.txt
+scripts
+test_support
+build-evidence
+images.lock.json
 docker-compose.yml
