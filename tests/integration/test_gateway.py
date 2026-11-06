@@ -185,7 +185,10 @@ class GatewayRequestHandlingTests(unittest.TestCase):
             headers={"Cookie": "qa_cookie_canary=synthetic-only"},
         )
         self.assertEqual(response.status, 200, response.body[:120])
-        deadline = time.monotonic() + 5
+        # Envoy's stdout access-log sink flushes asynchronously (normally
+        # around a 10-second file-flush interval); polling for only five
+        # seconds produces a false negative even when logs are correct.
+        deadline = time.monotonic() + 20
         while time.monotonic() < deadline:
             new_records = structured_access_records(logs())[baseline:]
             if new_records:
