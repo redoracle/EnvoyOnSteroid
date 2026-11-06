@@ -175,7 +175,7 @@ class GatewayRequestHandlingTests(unittest.TestCase):
             if after == before:
                 time.sleep(0.2)
                 continue
-            delta = after[len(before):] if after.startswith(before) else after
+            delta = after.removeprefix(before)
             records = []
             for line in delta.splitlines():
                 candidate = line.split(" | ", 1)[-1].strip()
