@@ -61,6 +61,21 @@ and 30-second complete-request timeout. These limits reduce some low-cost
 resource exhaustion attacks; they are not DDoS protection or rate limiting.
 Large cookies, slow uploads and long-lived streams need compatibility tests.
 
+## Test oracles and WAF diagnostic confidentiality
+
+Coraza's JSON body parser does not populate the raw `REQUEST_BODY` variable.
+The demo instead checks parsed JSON and URL-encoded form variables and the
+integration suite requires a **specific rule ID plus an actual phase-2
+interruption**. An HTTP 403 caused by an unrelated phase-1 CRS policy must
+never count as proof of phase-2 inspection.
+
+**Privacy boundary:** Envoy's structured access logs omit request URIs and
+client identifiers, but Coraza's *separate WASM diagnostic output* can
+include client IP addresses, complete request URIs and matched body/argument
+values. Production log forwarding, access controls and retention must treat
+raw WAF diagnostics as sensitive. Never run the synthetic integration
+suite against production or expose customer requests in CI.
+
 ## Logging and dependency integrity
 
 Structured request logs omit client IPs, raw URI paths, query strings, cookies,

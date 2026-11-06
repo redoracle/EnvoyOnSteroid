@@ -160,6 +160,44 @@ class GatewayRequestHandlingTests(unittest.TestCase):
             ["benign-token"],
         )
 
+    def test_structured_access_logs_exclude_synthetic_request_canaries(self):
+        # Only structured JSON access logs are intentionally privacy-scoped.
+        # Raw Coraza WASM diagnostics can contain matched values/URIs.
+        before = logs()
+        response = exchange(
+            "/get?qa_secret_canary=synthetic-only",
+            headers={"Cookie": "qa_cookie_canary=synthetic-only"},
+        )
+        self.assertEqual(response.status, 200, response.body[:120])
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            after = logs()
+            if after == before:
+                time.sleep(0.2)
+                continue
+            delta = after[len(before):] if after.startswith(before) else after
+            records = []
+            for line in delta.splitlines():
+                candidate = line.split(" | ", 1)[-1].strip()
+                if not candidate.startswith("{"):
+                    continue
+                try:
+                    record = json.loads(candidate)
+                except ValueError:
+                    continue
+                if isinstance(record, dict) and "response_code" in record:
+                    records.append(record)
+            if records:
+                for record in records:
+                    self.assertEqual(record["response_code"], 200)
+                    self.assertEqual(record["method"], "GET")
+                    self.assertNotIn("qa_secret_canary", json.dumps(record))
+                    self.assertNotIn("qa_cookie_canary", json.dumps(record))
+                    self.assertNotIn("synthetic-only", json.dumps(record))
+                return
+            time.sleep(0.2)
+        self.fail("No structured access log was emitted for the benign request")
+
 
 class GatewayWAFTests(unittest.TestCase):
     def assert_denied_by_rule(self, path, rule_id, phase, **kwargs):

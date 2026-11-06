@@ -50,3 +50,13 @@ Include a security/compatibility impact summary, affected dependency
 versions, reproducible validation commands, CI results, and any manual
 production tests not yet performed. Do not claim load testing or production
 readiness from passing unit and smoke tests alone.
+
+## Integration-test standards
+
+New WAF tests must prove the intended **rule ID and inspection phase** with
+a valid allowed content type and a matching benign control. Status-only
+assertions are insufficient because unrelated CRS rules may block a request.
+For forwarded traffic, validate actual backend response fields and payloads;
+for failures, test recovery as well as errors. Integration tests run only
+on the local, isolated Compose stack; unit tests remain network-free.
+Use synthetic payloads because WAF diagnostics may print matched values.

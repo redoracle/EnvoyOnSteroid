@@ -90,3 +90,18 @@ reduce some untrusted-client resource exhaustion. They are not a substitute
 for application-layer rate limits, network controls, or attack-resilient
 capacity planning. Large cookies and streaming workloads may require
 documented, separately verified exceptions.
+
+## Phase-2 inspection contract
+
+The recommended Coraza rules enable distinct body processors for form and
+JSON requests. The raw `REQUEST_BODY` collection is not populated by JSON
+processing. This reference therefore uses **phase-2** demo rules
+`ARGS_POST:message` (ID `1000002`) and `ARGS:json.message`
+(ID `1000003`). Each has an allowed control request with the same
+content type and a blocked request with a synthetic sentinel.
+
+CI requires a corresponding Coraza rule ID and
+`phase="http_request_body"` interruption for each blocked request.
+This prevents a phase-1 CRS rejection, such as disallowed `text/plain`,
+from masquerading as phase-2 protection. Both demo rules should be removed
+or rewritten for application-specific policies before production use.

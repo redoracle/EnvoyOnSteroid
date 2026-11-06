@@ -66,3 +66,15 @@ See [Operations](OPERATIONS.md) for the executable smoke tests and
 [Releases](RELEASE.md) for staging, regression, image provenance and
 production readiness. Passing the smoke tests is necessary but not
 sufficient to deploy on public networks.
+
+## Test evidence and logging residual risk
+
+CI now tests real phase-2 form and JSON rule matches and verifies backend
+payload contracts, bad-path handling and recovery from a controlled backend
+outage. It does not establish production false-positive rates, general WAF
+coverage, memory stability or concurrency limits.
+
+Structured Envoy access logs deliberately omit request details; separately,
+Coraza WASM diagnostics may still contain client addresses, complete URI
+paths and matched payload excerpts. Treat entire container logs as sensitive
+unless the WASM diagnostic stream is explicitly sanitized or restricted.

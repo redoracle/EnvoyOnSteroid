@@ -10,6 +10,13 @@ Git commits and merged PRs are **not** production releases.
   support guidance, CODEOWNERS, and editor/Git attributes.
 - Threat model, release checklist, automated repository hygiene checks.
 
+### Test-suite reliability
+- Replace ambiguous phase-2 smoke probes with exact Coraza rule IDs for
+  URL-encoded form and JSON request bodies; verify the interruption phase.
+- Assert real upstream method, query and body response contracts, path
+  normalization, header limits, and outage/recovery behavior.
+- Isolate Compose environments per CI run and limit failure diagnostics.
+
 ### Security and reliability
 - Second audit PR hardens URI normalization, forwarded-header trust,
   structured logging, runtime isolation, and request-body regression tests.

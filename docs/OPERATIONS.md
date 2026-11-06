@@ -79,3 +79,23 @@ and 30 seconds to receive a complete request. The smoke test covers the
 431 outcome; the exact timeouts are checked statically and via the Envoy
 bootstrap validator. Configure and test larger cookies, slow uploads,
 long polling, and streaming endpoints before production use.
+
+## Integration and rule-evidence testing
+
+`bash tests/smoke.sh` waits for the local proxy, then runs real network
+integration tests from `tests/integration/test_gateway.py`. These validate
+the backend's echoed HTTP method, query arguments and JSON/form payload,
+exact WAF rule IDs and interruption phases, unusual path handling, and
+an intentionally stopped/restarted **demo** backend.
+
+The Compose project name is unique for each CI run and attempt. A failing
+job prints a bounded diagnostic log tail and always attempts to remove its
+containers, networks and volumes. The integration suite is destructive;
+do not execute it against production or a shared Docker Compose project.
+
+Raw WASM diagnostic logs may contain client IP addresses and matched request
+data even when the privacy-conscious structured Envoy access log omits them.
+Use synthetic probes and protect all diagnostic output. If a phase-2 test
+fails despite receiving HTTP 403, examine whether another CRS rule blocked
+during headers; the correct fix is to restore the intended body-processing
+path, not to weaken the assertion.

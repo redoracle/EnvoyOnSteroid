@@ -74,10 +74,18 @@ Expected status codes:
 | --- | --- | --- |
 | Benign GET or JSON POST | 200 | Routed to demo backend |
 | `/__waf_test_block` | 403 | Phase-1 custom WAF rule |
-| POST body containing `__waf_test_payload` | 403 | Phase-2 WAF rule |
+| Form POST with `message=__waf_test_payload` | 403 | Phase-2 rule `1000002` |
+| JSON POST with `message: __waf_test_payload` | 403 | Phase-2 rule `1000003` |
 | CRS XSS probe | 403 | Embedded OWASP CRS |
 | Encoded slash path | 400 | Ambiguous path rejected |
 | Request headers above 32 KiB | 431 | Oversized header protection |
+
+The integration tests additionally validate the echoed backend JSON/form
+payloads, rule-specific WAF denials and recovery after stopping the demo
+backend. WAF rule attribution comes from the isolated Compose service logs:
+a generic HTTP 403 does **not** prove request-body inspection. The test
+entrypoint `tests/smoke.sh` performs readiness checks, then runs the
+behavior-focused `tests/integration/test_gateway.py` suite.
 
 If a blocking test unexpectedly succeeds, **stop deployment** and investigate
 WASM loading, rule order, and configuration. The demo listener is bound to
@@ -130,7 +138,9 @@ request normalization and access logging. `docker-compose.yml` is
 **local-only** with illustrative resource limits, not a production manifest.
 The public sample WAF rules `/__waf_test_block` and
 `__waf_test_payload` are test fixtures to remove before protecting real
-traffic.
+traffic. The phase-2 test rules inspect parsed `ARGS_POST:message` (form)
+and `ARGS:json.message` (JSON), not `REQUEST_BODY`, which is not populated
+by Coraza's JSON body processor.
 
 Before production: replace the demo backend, define TLS and allowed hosts,
 review trusted-proxy hops, URL and header-size compatibility (32 KiB),
