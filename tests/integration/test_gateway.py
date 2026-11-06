@@ -180,8 +180,11 @@ class GatewayRequestHandlingTests(unittest.TestCase):
         # Only structured JSON access logs are intentionally privacy-scoped.
         # Raw Coraza WASM diagnostics can contain matched values/URIs.
         baseline = len(structured_access_records(logs()))
+        # HEAD is unique in this serial suite, so its access record can be
+        # identified even if Envoy flushes earlier GET/POST records in a batch.
         response = exchange(
             "/get?qa_secret_canary=synthetic-only",
+            method="HEAD",
             headers={"Cookie": "qa_cookie_canary=synthetic-only"},
         )
         self.assertEqual(response.status, 200, response.body[:120])
@@ -191,16 +194,21 @@ class GatewayRequestHandlingTests(unittest.TestCase):
         deadline = time.monotonic() + 20
         while time.monotonic() < deadline:
             new_records = structured_access_records(logs())[baseline:]
-            if new_records:
-                for record in new_records:
-                    self.assertEqual(record["response_code"], 200)
-                    self.assertEqual(record["method"], "GET")
-                    self.assertNotIn("qa_secret_canary", json.dumps(record))
-                    self.assertNotIn("qa_cookie_canary", json.dumps(record))
-                    self.assertNotIn("synthetic-only", json.dumps(record))
+            # Check every newly flushed access record for accidental data
+            # disclosure, regardless of asynchronous batching.
+            for record in new_records:
+                encoded = json.dumps(record)
+                self.assertNotIn("qa_secret_canary", encoded)
+                self.assertNotIn("qa_cookie_canary", encoded)
+                self.assertNotIn("synthetic-only", encoded)
+            head_records = [
+                r for r in new_records if r.get("method") == "HEAD"
+            ]
+            if head_records:
+                self.assertEqual(head_records[-1]["response_code"], 200)
                 return
             time.sleep(0.2)
-        self.fail("No structured JSON access record emitted for benign GET")
+        self.fail("No structured JSON access record emitted for HEAD probe")
 
 
 class GatewayWAFTests(unittest.TestCase):
