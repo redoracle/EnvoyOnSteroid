@@ -125,12 +125,22 @@ class ConfigurationTests(unittest.TestCase):
         self.assertNotIn("%DOWNSTREAM_REMOTE_ADDRESS%", fields.values())
         self.assertNotIn("%REQ(X-FORWARDED-FOR)%", fields.values())
 
-    def test_phase_two_waf_body_rule_is_loaded(self):
+    def test_phase_two_waf_rules_target_parsed_body_fields(self):
         filters = self.http_config["http_filters"]
-        rules = json.loads(filters[0]["typed_config"]["config"]["configuration"]["value"])
-        directives = rules["directives_map"][rules["default_directives"]]
-        self.assertTrue(any("SecRule REQUEST_BODY" in rule and
-                            "__waf_test_payload" in rule for rule in directives))
+        wasm = filters[0]["typed_config"]["config"]["configuration"]["value"]
+        config = json.loads(wasm)
+        directives = config["directives_map"][config["default_directives"]]
+        for variable, rule_id in (
+            ("ARGS_POST:message", "1000002"),
+            ("ARGS:json.message", "1000003"),
+        ):
+            with self.subTest(variable=variable):
+                matched = [d for d in directives if f"SecRule {variable} " in d]
+                self.assertEqual(len(matched), 1)
+                self.assertIn("phase:2", matched[0])
+                self.assertIn(f"id:{rule_id}", matched[0])
+                self.assertIn("deny", matched[0])
+        self.assertNotIn("SecRule REQUEST_BODY", " ".join(directives))
 
     def test_backend_and_proxy_limits_and_isolation(self):
         backend = self.compose["services"]["backend"]

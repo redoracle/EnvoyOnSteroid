@@ -78,7 +78,8 @@ static_resources:
                                   "Include @crs-setup-conf",
                                   "Include @owasp_crs/*.conf",
                                   "SecRule REQUEST_URI \"@streq /__waf_test_block\" \"id:1000001,phase:1,deny,status:403,log\"",
-                                  "SecRule REQUEST_BODY \"@contains __waf_test_payload\" \"id:1000002,phase:2,deny,status:403,log\""
+                                  "SecRule ARGS_POST:message \"@contains __waf_test_payload\" \"id:1000002,phase:2,deny,status:403,log,msg:'Demo form body rule'\"",
+                                  "SecRule ARGS:json.message \"@contains __waf_test_payload\" \"id:1000003,phase:2,deny,status:403,log,msg:'Demo JSON body rule'\""
                                 ]
                               },
                               "default_directives": "default"

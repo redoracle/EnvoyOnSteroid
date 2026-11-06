@@ -17,6 +17,9 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-24.04
+    env:
+      # Ensure every attempt has its own containers, network and logs.
+      COMPOSE_PROJECT_NAME: envoy-qa-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     steps:
       # Both actions are pinned to verified release commit SHAs (not moving tags).
@@ -58,6 +61,15 @@ jobs:
       - name: Integration smoke test
         run: |
           set -euo pipefail
-          trap 'docker compose logs --no-color; docker compose down --volumes --remove-orphans' EXIT
+          cleanup() {
+            result=$?
+            if (( result != 0 )); then
+              docker compose ps || true
+              docker compose logs --no-color --tail 200 || true
+            fi
+            docker compose down --volumes --remove-orphans || true
+            exit "$result"
+          }
+          trap cleanup EXIT
           docker compose up --detach --no-build
           bash tests/smoke.sh
