@@ -78,6 +78,17 @@ jobs:
             echo "Integration pass $pass of 2"
             bash tests/smoke.sh
           done
+          # A bounded PR regression, not a sustained memory study.
+          python3 scripts/soak_gateway.py --duration 30 --rate 6 --workers 4 \
+            --output build-evidence/soak-report.json
+
+      - name: Upload bounded WAF soak evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: waf-soak-regression-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build-evidence/soak-report.json
+          if-no-files-found: error
+          retention-days: 14
 
   supply-chain:
     name: OCI supply-chain evidence

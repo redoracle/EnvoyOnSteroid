@@ -10,6 +10,11 @@ Git commits and merged PRs are **not** production releases.
   support guidance, CODEOWNERS, and editor/Git attributes.
 - Threat model, release checklist, automated repository hygiene checks.
 
+### WAF stability evidence
+- Add measured PR throughput/memory regression and a weekly five-minute
+  controlled traffic soak with p95/p99 latency, error and memory-growth
+  checks, retaining numerical run summaries.
+
 ### OCI supply-chain integrity
 - Pin all three runtime image references by reviewed immutable OCI digest.
 - Detect upstream tag drift and preserve locally generated SPDX SBOM and

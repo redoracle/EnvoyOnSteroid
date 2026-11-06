@@ -24,7 +24,8 @@ reverse proxy and WAF reference deployment with security-focused defaults.
 - **Privacy-aware logging:** structured request outcomes without URL paths,
   queries, cookies, request headers or client IP addresses.
 - **Verified CI:** GitHub Actions, pinned actions, Python lint, configuration tests,
-  bootstrap validation, and functional WAF regression tests.
+  bootstrap validation, functional WAF regression tests, and
+  scheduled bounded memory/latency soak evidence.
 
 ## Architecture
 

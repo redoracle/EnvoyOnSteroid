@@ -1,0 +1,66 @@
+name: Scheduled WAF stability soak
+
+on:
+  schedule:
+    # Once a week on Sunday 04:17 UTC (default branch only).
+    - cron: "17 4 * * 0"
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: "Length of the controlled demo soak in seconds (10–900)"
+        type: number
+        required: false
+        default: 300
+
+permissions:
+  contents: read
+
+concurrency:
+  group: waf-soak-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  soak:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      COMPOSE_PROJECT_NAME: envoy-soak-${{ github.run_id }}-${{ github.run_attempt }}
+      SOAK_DURATION: ${{ inputs.duration || 300 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build digest-pinned reference image
+        run: |
+          docker compose config --quiet
+          docker build --pull --tag envoyonsteroid:local .
+
+      - name: Verify WAF, then run steady state load
+        run: |
+          set -euo pipefail
+          cleanup() {
+            result=$?
+            if (( result != 0 )); then
+              docker compose ps || true
+              docker compose logs --no-color --tail 100 || true
+            fi
+            docker compose down --volumes --remove-orphans || true
+            exit "$result"
+          }
+          trap cleanup EXIT
+          docker compose up --detach --no-build
+          PYTHON=python3 bash tests/smoke.sh
+          python3 scripts/soak_gateway.py \
+            --duration "$SOAK_DURATION" --rate 8 --workers 6 \
+            --output build-evidence/weekly-soak.json
+
+      - name: Preserve non-sensitive numeric report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: weekly-waf-soak-${{ github.run_id }}
+          path: build-evidence/weekly-soak.json
+          if-no-files-found: warn
+          retention-days: 14

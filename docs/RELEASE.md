@@ -65,3 +65,13 @@ Do not equate a GitHub PR or commit with a release. Use intentional release
 tags, record the full Git commit and deployed OCI digests, and retain the
 previous known-good manifest for rollback. Avoid publishing an unreviewed
 `latest` image or automatically deploying Dependabot PRs.
+
+## WAF memory/performance review
+
+CI runs a short controlled throughput/latency/memory regression. The
+[scheduled soak workflow](../.github/workflows/soak.yml) provides a
+weekly five-minute measurement and a 10–900-second manual dispatch.
+Review its numeric JSON artifact and compare trends before promoting
+a release. A successful short soak **does not certify** the upstream
+Coraza WASM module against memory leaks; longer staged tests with
+representative traffic and controlled hardware remain mandatory.

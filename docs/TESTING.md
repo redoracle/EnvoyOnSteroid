@@ -124,3 +124,29 @@ not the large image tarball.
 This **build-generated provenance** is not a cryptographically authenticated
 upstream publisher identity, an independent rebuild, or a vulnerability
 assessment. Those remain required before production promotion.
+
+## Bounded stability and sustained soak gates
+
+PR validation includes a short 30-second request mix at 6 requests/s:
+benign GET, benign JSON POST, the custom URI block and phase-2 JSON body
+block. It catches major throughput/latency and memory regressions but
+is **not a sustained memory-leak experiment**.
+
+A separate [scheduled workflow](../.github/workflows/soak.yml) runs
+weekly with a **300-second** steady-state load (8 req/s, 6 workers),
+after a full real-container security preflight. A manual dispatch can
+set any duration from 10 to 900 seconds.
+
+`scripts/soak_gateway.py` records numeric per-scenario counts,
+failure counts, p50/p95/p99 client latency, effective request rate and
+Docker-reported Envoy working-set memory. It fails on any unexpected
+response, p95 above 2500 ms, less than 70% of controlled request rate
+or memory above 900 MiB. Only for runs at least 180 seconds long with
+10 or more samples does it flag memory growth over 160 MiB across
+early/late sample medians. Reports contain no real user request data
+and are uploaded for review.
+
+These limits are coarse CI regression thresholds, **not production
+SLOs**. Multi-hour runs on controlled hardware, multi-platform checks,
+representative traffic, and baseline-to-baseline statistical comparisons
+are still needed to establish long-term WASM memory stability.
