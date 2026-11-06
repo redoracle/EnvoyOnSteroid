@@ -63,7 +63,7 @@ def structured_access_records(raw_logs: str) -> list[dict]:
 # go-httpbin writes a structured-ish request outcome in the `msg` field.
 # Count URIs only in those backend access messages, not the Coraza logs.
 _BACKEND_REQUEST_RE = re.compile(
-    r'msg="(?P<status>[1-5][0-9]{2}) (?P<method>[A-Z]+) (?P<uri>/[^" ]*)"'
+    r'msg="(?P<status>[1-5][0-9]{2}) (?P<method>[A-Z]+) (?P<uri>/[^" ]*) [^"]*"'
 )
 
 

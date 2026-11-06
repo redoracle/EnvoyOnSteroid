@@ -116,12 +116,14 @@ class RuleDecisionParsingTests(unittest.TestCase):
 
 class BackendObservationTests(unittest.TestCase):
     def test_only_real_backend_access_messages_count_as_requests(self):
-        logs = (
-            'backend-1 | time=t level=INFO '
-            'msg="200 GET /get?qa_blocked_form=1 0.2ms" status=200\\n'
-            'envoy-1 | [uri "/post?qa_blocked_form=1"]\\n'
-            'backend-1 | time=t level=INFO '
-            'msg="200 GET /get?qa_barrier_form=1 0.2ms" status=200\\n'
+        logs = "\n".join(
+            [
+                'backend-1 | time=t level=INFO '
+                'msg="200 GET /get?qa_blocked_form=1 0.2ms" status=200',
+                'envoy-1 | [uri "/post?qa_blocked_form=1"]',
+                'backend-1 | time=t level=INFO '
+                'msg="200 GET /get?qa_barrier_form=1 0.2ms" status=200',
+            ]
         )
         self.assertEqual(backend_uri_marker_hits(logs, "qa_blocked_form"), 1)
         self.assertEqual(backend_uri_marker_hits(logs, "qa_barrier_form"), 1)

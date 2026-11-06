@@ -398,7 +398,7 @@ class GatewayWAFTests(unittest.TestCase):
             method="POST", body=body,
             headers={"Content-Type": content_type},
         )
-        barrier = f"qa_barrier_{marker}"
+        barrier = f"qa_barrier_{rule_id}"
         barrier_before = backend_uri_marker_hits(baseline_logs, barrier)
         result = exchange(f"/get?qa_barrier={barrier}")
         self.assertEqual(result.status, 200, result.body[:120])
