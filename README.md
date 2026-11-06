@@ -17,7 +17,8 @@ reverse proxy and WAF reference deployment with security-focused defaults.
 - **Modern architecture:** Envoy v1.40.2 with v3 config, Coraza Proxy-WASM
   v0.6.0 and the embedded OWASP CRS v4.14.0.
 - **Explicit HTTP handling:** path normalization, rejection of encoded
-  slashes/backslashes, and no trust in inbound forwarding headers.
+  slashes/backslashes, and downstream identity/protocol header sanitization
+  before forwarding to the demonstration backend.
 - **Container isolation:** non-root services, read-only filesystems, no Linux
   capabilities or privilege escalation, memory/PID limits, private backend.
 - **Privacy-aware logging:** structured request outcomes without URL paths,
@@ -147,7 +148,8 @@ and `ARGS:json.message` (JSON), not `REQUEST_BODY`, which is not populated
 by Coraza's JSON body processor.
 
 Before production: replace the demo backend, define TLS and allowed hosts,
-review trusted-proxy hops, URL and header-size compatibility (32 KiB),
+review the forwarded-header stripping policy against any trusted ingress,
+trusted-proxy hops, URL and header-size compatibility (32 KiB),
 10s header/60s idle timeouts and then tune CRS exclusions/body
 limits on representative traffic, configure monitoring and audit-log retention,
 stress-test the WASM filter, and prepare a rollback.

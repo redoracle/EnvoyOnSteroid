@@ -124,3 +124,13 @@ Runtime integration tests inspect **actual Docker container settings** via
 non-root, with read-only roots, all capabilities dropped, no-new-privileges
 and positive memory/PID limits. The Envoy host port must bind to loopback,
 and the demo backend must not publish host ports.
+
+## Forwarded-header trust regression
+
+The integration suite sends untrusted `X-Forwarded-For`,
+`CF-Connecting-IP`, `Fly-Client-IP`, `X-Real-IP`, `Forwarded`
+and `X-Forwarded-Proto` values. The echoed go-httpbin headers and origin
+must not expose these untrusted values. The route-level stripping policy
+is intentional for this **direct-entry** demo; re-evaluate it behind a
+trusted ingress, because real applications may require a validated,
+gateway-generated client identity and original scheme.

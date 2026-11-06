@@ -56,6 +56,21 @@ static_resources:
                       routes:
                         - match:
                             prefix: "/"
+                          # Edge reference: prevent untrusted identity/proto
+                          # headers from being interpreted by the upstream.
+                          # Behind a trusted ingress, review this policy.
+                          request_headers_to_remove:
+                            - x-forwarded-for
+                            - forwarded
+                            - x-real-ip
+                            - cf-connecting-ip
+                            - fly-client-ip
+                            - fastly-client-ip
+                            - true-client-ip
+                            - x-forwarded-host
+                            - x-forwarded-proto
+                            - x-forwarded-protocol
+                            - x-forwarded-ssl
                           route:
                             cluster: backend
                             timeout: 15s

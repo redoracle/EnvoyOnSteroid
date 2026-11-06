@@ -180,6 +180,32 @@ class GatewayRequestHandlingTests(unittest.TestCase):
             ["benign-token"],
         )
 
+    def test_client_supplied_identity_headers_cannot_spoof_upstream(self):
+        # go-httpbin trusts several identity headers by default. This
+        # verifies Envoy actually removes untrusted client values before
+        # forwarding, not just that Envoy itself ignores untrusted XFF.
+        spoofed = {
+            "X-Forwarded-For": "203.0.113.17",
+            "CF-Connecting-IP": "198.51.100.29",
+            "Fly-Client-IP": "192.0.2.41",
+            "X-Real-IP": "203.0.113.19",
+            "Forwarded": "for=203.0.113.21",
+            "X-Forwarded-Proto": "https",
+        }
+        response = exchange("/get", headers=spoofed)
+        self.assertEqual(response.status, 200, response.body[:120])
+        body = response.as_json()
+        forwarded = {
+            key.lower(): values for key, values in body["headers"].items()
+        }
+        for key, value in spoofed.items():
+            with self.subTest(header=key):
+                self.assertNotIn(value, forwarded.get(key.lower(), []))
+        self.assertNotIn(
+            body["origin"],
+            {"203.0.113.17", "198.51.100.29", "192.0.2.41", "203.0.113.19"},
+        )
+
     def test_structured_access_logs_exclude_synthetic_request_canaries(self):
         # Only structured JSON access logs are intentionally privacy-scoped.
         # Raw Coraza WASM diagnostics can contain matched values/URIs.

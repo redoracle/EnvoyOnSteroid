@@ -108,6 +108,27 @@ class ConfigurationTests(unittest.TestCase):
             self.http_config["path_with_escaped_slashes_action"], "REJECT_REQUEST"
         )
 
+    def test_untrusted_identity_headers_are_removed_before_upstream(self):
+        route = self.http_config["route_config"]["virtual_hosts"][0][
+            "routes"
+        ][0]
+        stripped = set(route["request_headers_to_remove"])
+        self.assertTrue(
+            {
+                "x-forwarded-for",
+                "forwarded",
+                "x-real-ip",
+                "cf-connecting-ip",
+                "fly-client-ip",
+                "fastly-client-ip",
+                "true-client-ip",
+                "x-forwarded-host",
+                "x-forwarded-proto",
+                "x-forwarded-protocol",
+                "x-forwarded-ssl",
+            }.issubset(stripped)
+        )
+
     def test_structured_access_logs_avoid_request_pii(self):
         logs = self.http_config["access_log"]
         self.assertEqual(len(logs), 1)

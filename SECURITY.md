@@ -61,6 +61,20 @@ and 30-second complete-request timeout. These limits reduce some low-cost
 resource exhaustion attacks; they are not DDoS protection or rate limiting.
 Large cookies, slow uploads and long-lived streams need compatibility tests.
 
+## Downstream identity and forwarded-header boundary
+
+The direct-entry demonstration explicitly strips unverified client-provided
+identity and protocol headers (including `X-Forwarded-For`, `Forwarded`,
+`X-Real-IP`, common CDN-specific IP headers and `X-Forwarded-Proto`)
+**before** sending traffic to the backend. Envoy's trusted address selection
+and the headers an upstream application actually receives are separate
+security boundaries: `xff_num_trusted_hops: 0` alone does not prove the
+upstream cannot observe client-forged headers. CI sends synthetic spoofed
+identity headers and asserts the backend does not receive their values.
+For deployments behind authenticated gateways or ingress proxies, define a
+new explicit trusted-header policy, and retest both the Envoy trust logic
+and backend identity semantics.
+
 ## Test oracles and WAF diagnostic confidentiality
 
 Coraza's JSON body parser does not populate the raw `REQUEST_BODY` variable.

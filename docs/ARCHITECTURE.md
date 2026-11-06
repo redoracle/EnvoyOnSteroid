@@ -105,3 +105,16 @@ CI requires a corresponding Coraza rule ID and
 This prevents a phase-1 CRS rejection, such as disallowed `text/plain`,
 from masquerading as phase-2 protection. Both demo rules should be removed
 or rewritten for application-specific policies before production use.
+
+## Direct-entry forwarded-header filtering
+
+Envoy's trusted-client address policy and the headers forwarded to an
+application are distinct. With `use_remote_address` and zero trusted XFF
+hops, Envoy ignores client-supplied XFF for its own trust calculation, but
+an application may still parse a spoofed first XFF element or vendor IP
+header independently. The reference route explicitly removes untrusted
+identity/protocol headers before proxying to the demo backend. The CI
+contract checks the **actual** echoed backend headers and origin to catch
+spurious trust at the application boundary. Behind a verified load
+balancer/TLS ingress, adjust this direct-entry policy deliberately and
+verify it with real request traces.

@@ -20,6 +20,8 @@ Git commits and merged PRs are **not** production releases.
   add deterministic parser tests that reject unrelated or malformed events.
 - Assert live Docker container runtime isolation and localhost-only
   publishing; run the integration suite twice to detect state leakage.
+- Strip client-provided identity/protocol headers before routing to the
+  reference backend and verify the effective behavior using spoof probes.
 
 ### Security and reliability
 - Second audit PR hardens URI normalization, forwarded-header trust,

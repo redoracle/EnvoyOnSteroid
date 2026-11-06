@@ -78,3 +78,12 @@ Structured Envoy access logs deliberately omit request details; separately,
 Coraza WASM diagnostics may still contain client addresses, complete URI
 paths and matched payload excerpts. Treat entire container logs as sensitive
 unless the WASM diagnostic stream is explicitly sanitized or restricted.
+
+## Spoofed client identity and application trust
+
+A proxy may correctly derive a trusted client address for **itself** while
+still passing incoming XFF or CDN-specific identity headers to an upstream
+that trusts them. The demonstration route strips those unverified headers
+and tests the actual backend's resulting view. This policy is specific to
+the direct-entry localhost example; multi-proxy deployments must establish
+their own authenticated trust boundary and end-to-end header contract.
