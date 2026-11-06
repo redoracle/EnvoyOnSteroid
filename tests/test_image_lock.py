@@ -35,7 +35,7 @@ class ImageLockTests(unittest.TestCase):
     def test_mismatched_dockerfile_digest_is_rejected(self):
         lock = copy.deepcopy(self.lock)
         lock["images"]["envoy"]["digest"] = "sha256:" + "f" * 64
-        with self.assertRaisesRegex(ValueError, "differs"):
+        with self.assertRaisesRegex(ValueError, "FROM stages"):
             validate_lock(lock, self.dockerfile, self.compose)
 
     def test_comment_cannot_disguise_mutable_dockerfile_stage(self):
