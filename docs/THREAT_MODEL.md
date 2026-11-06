@@ -96,8 +96,9 @@ blocked JSON POST that still appeared as a `400 POST` in backend logs.
 This is material for services with side effects even though the client
 saw HTTP 403.
 
-The reference now places Envoy's request buffer after Coraza and
-before the router and tests non-forwarding with direct backend log
+The reference now uses one buffer before Coraza (normalizing bounded
+request bodies) and another before the router (preventing premature
+upstream delivery), and tests non-forwarding with direct backend log
 observations. This mitigates early upstream delivery for bounded,
 non-streaming requests; it does not provide application-level
 transactions, replay immunity, or a guarantee for unvalidated

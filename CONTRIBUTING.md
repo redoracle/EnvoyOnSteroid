@@ -78,3 +78,9 @@ barrier to avoid false success when log streams flush asynchronously.
 A small parallel traffic regression checks that allow/deny decisions do
 not leak between request contexts; do not infer production capacity
 from this controlled test.
+
+For test layering, real-use-case scenarios, attack-safe fixtures, evidence
+requirements and remaining manual release gates, read the
+[testing strategy](docs/TESTING.md). Do not classify a WAF test as passing
+merely because a client received HTTP 403: prove both the correlated
+decision and absence of upstream delivery after a backend log barrier.

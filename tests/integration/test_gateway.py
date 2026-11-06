@@ -168,6 +168,15 @@ class GatewayContractTests(unittest.TestCase):
         self.assertEqual(document["method"], "POST")
         self.assertEqual(document["json"], {"message": "benign", "count": 3})
 
+    def test_moderate_json_body_passes_both_buffer_stages_intact(self):
+        payload = {"message": "a" * (64 * 1024)}
+        response = exchange(
+            "/post", method="POST", body=json.dumps(payload),
+            headers={"Content-Type": "application/json"}, timeout=10,
+        )
+        self.assertEqual(response.status, 200, response.body[:120])
+        self.assertEqual(response.as_json()["json"], payload)
+
     def test_form_post_preserves_fields_and_method(self):
         response = exchange(
             "/post", method="POST", body="message=benign&count=2",
@@ -202,13 +211,25 @@ class GatewayRequestHandlingTests(unittest.TestCase):
         )
 
     def test_body_exceeding_buffer_limit_is_rejected(self):
-        # Exceed the 128 KiB Envoy buffer; oversized data must be rejected.
+        # Over-limit request must receive 413 AND never reach the backend.
+        marker = "qa_body_limit"
+        before = backend_logs()
+        before_blocked = backend_uri_marker_hits(before, marker)
         payload = json.dumps({"message": "a" * (128 * 1024)})
         response = exchange(
             "/post?qa_body_limit=1", method="POST", body=payload,
             headers={"Content-Type": "application/json"}, timeout=10,
         )
         self.assertEqual(response.status, 413, response.body[:120])
+        barrier = "qa_oversized_barrier"
+        before_barrier = backend_uri_marker_hits(before, barrier)
+        allowed = exchange(f"/get?qa_barrier={barrier}")
+        self.assertEqual(allowed.status, 200, allowed.body[:120])
+        observed = wait_for_backend_observation(barrier, before_barrier)
+        self.assertEqual(
+            backend_uri_marker_hits(observed, marker), before_blocked,
+            "Oversized request was forwarded to the backend despite HTTP 413",
+        )
 
     def test_headers_above_configured_limit_are_rejected(self):
         response = exchange(

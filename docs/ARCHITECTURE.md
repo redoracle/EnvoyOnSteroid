@@ -128,16 +128,18 @@ access-log entry even though Envoy returned 403. The WAF filter must
 not be treated as a transactional delivery barrier by itself.
 
 Filter order is now:
-`Coraza Proxy-WASM` → `envoy.filters.http.buffer` → `router`.
-Coraza sees request headers and body data before the buffer filter.
-The buffer filter prevents downstream-to-upstream routing until the
-body is fully received, so a Coraza denial can interrupt without
-forwarding the body. Integration tests verify both **rule attribution**
+`buffer (inbound)` → `Coraza Proxy-WASM` →
+`buffer (delivery barrier)` → `router`.
+The inbound buffer normalizes complete finite chunked requests before
+CRS protocol checks. The downstream delivery buffer prevents the
+terminal router from forwarding a request until after Coraza has
+inspected the full bounded body. Integration tests verify both **rule attribution**
 and the absence of denied request markers in backend access logs
 after an allowed request confirms log flushing.
 
-The 128 KiB buffering limit is a deliberate example cap and may
-conflict with application-specific WAF body inspection limits, uploads,
-chunked transfer, WebSockets, gRPC streams, long-lived requests, or
-high concurrency. Review memory costs, accepted content types and
+Each of the two 128 KiB buffering limits is a deliberate example cap;
+their memory costs accumulate. Both may conflict with application-
+specific WAF body inspection limits, large uploads, WebSockets,
+gRPC streams, long-lived requests, or high concurrency.
+Finite chunked form and JSON bodies are supported and tested. Review memory costs, accepted content types and
 the correct request-size response codes when adapting this design.

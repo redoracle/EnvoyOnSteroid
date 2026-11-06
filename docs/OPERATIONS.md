@@ -155,12 +155,12 @@ state-isolation regression, not load or performance certification.
 A client-facing Coraza 403 is **not proof** that the upstream did not
 receive the rejected request. The integration suite now tests the
 backend's own request logs and uses an allowed GET as a logging
-barrier after each denied form/JSON request. Envoy's request buffer
-filter sits immediately after Coraza and before the router to prevent
-upstream transmission of inspected request bodies until they are
-complete.
+barrier after each denied form/JSON request. Envoy first buffers finite
+requests to normalize chunked framing for Coraza, then uses a second
+buffer after the WAF to prevent the router from transmitting rejected
+request bodies upstream.
 
-The reference buffers at most **128 KiB** per request; this is not
+The reference uses **two 128 KiB buffers** per request; this is not
 compatible with streaming uploads, WebSockets or streaming gRPC
 without changing the architecture. Large payloads may receive a
 4xx error, and resource pressure grows with concurrent requests.

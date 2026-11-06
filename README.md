@@ -35,11 +35,13 @@ Host 127.0.0.1:8080
 Envoy HTTP listener (normalization, header/time limits, access logging)
    |
    v
+Envoy inbound buffer (128 KiB, normalize finite chunked requests)
+   |
+   v
 Coraza Proxy-WASM + embedded OWASP CRS
    |
    v
-Envoy request buffer (128 KiB maximum; no upstream forwarding
-until the complete inspected request is available)
+Envoy delivery buffer (128 KiB, withhold until WAF decision)
    |
    v
 Envoy router --> backend:8080 (private go-httpbin demo)
@@ -91,11 +93,13 @@ payloads, rule-specific WAF denials, **effective Docker runtime restrictions**
 the demo backend. CI repeats the entire integration suite twice against one
 stack to catch shared-state and cleanup regressions. WAF rule attribution comes from the isolated Compose service logs:
 a generic HTTP 403 does **not** prove request-body inspection.
-An additional Envoy request-buffer filter sits **between Coraza and the
-router**, preventing streaming request bodies into the backend before
-Coraza can decide whether to deny them. The maximum buffered body is
-128 KiB; larger requests and streaming/upgrade workloads are not
-supported by this example without a redesigned, separately tested policy.
+Two bounded Envoy buffers surround Coraza: the inbound buffer
+normalizes complete finite chunked bodies before CRS inspection, and the
+post-WAF delivery buffer keeps rejected requests from reaching the
+backend. Both have **128 KiB** limits. This deliberately adds memory
+overhead and is incompatible with streaming/upgrade workloads.
+Allowed and malicious chunked form/JSON requests and HTTP 413 handling
+are exercised in CI.
 The test oracle correlates matched rule IDs and denial phases to the same
 Coraza transaction ID, with offline negative tests protecting the parser. The test
 entrypoint `tests/smoke.sh` performs readiness checks, then runs the
@@ -170,6 +174,7 @@ stress-test the WASM filter, and prepare a rollback.
 | [Architecture](docs/ARCHITECTURE.md) | Filters and trust boundaries |
 | [Threat model](docs/THREAT_MODEL.md) | Assets, threats and residual risks |
 | [Operations](docs/OPERATIONS.md) | Smoke tests, logs and diagnostics |
+| [Testing strategy](docs/TESTING.md) | Test layers, security oracles, CI and limits |
 | [Migration](docs/MIGRATION.md) | Breaking changes since 2019 |
 | [Release process](docs/RELEASE.md) | Safe dependency/release gates |
 | [Security](SECURITY.md) | Private vulnerability reporting |

@@ -68,18 +68,21 @@ An earlier integration probe established that a JSON request returning
 response. Coraza's WASM decision alone is therefore insufficient to
 establish an upstream *no-forwarding* guarantee.
 
-The reference places Envoy's HTTP **buffer filter immediately after the
-Coraza WASM filter and before the terminal router**. The buffer filter
-holds a request back from the backend until complete request data is
-available; Coraza evaluates body data before it reaches the buffering
-filter. CI rejects any form/JSON request that reaches the backend after
-a WAF 403 by waiting for an allowed backend logging barrier.
+The reference places a **pre-WAF buffer** before Coraza to collect and
+normalize complete bounded request bodies (including finite chunked
+transfers), then uses a **post-WAF buffer** before the terminal router as
+an upstream delivery barrier. This preserves phase-2 inspection while
+withholding rejected requests from the backend. CI rejects any form/JSON
+request that reaches the backend after a WAF 403 by waiting for an
+allowed backend logging barrier. Oversized HTTP 413 requests are
+independently checked for non-forwarding.
 
 The enforced demonstration buffer limit is **128 KiB**. It disallows
 large uploads, gRPC/WebSocket streaming and other streaming workloads
 as configured; those require a different architecture and tests.
-Buffering also increases per-request memory pressure. Do not disable
-it to silence the non-forwarding regression.
+Two-stage buffering also increases per-request memory pressure.
+Do not disable the delivery barrier to silence the non-forwarding
+regression. See the [testing strategy](docs/TESTING.md).
 
 ## Downstream identity and forwarded-header boundary
 

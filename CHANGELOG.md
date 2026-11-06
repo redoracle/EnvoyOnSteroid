@@ -29,7 +29,11 @@ Git commits and merged PRs are **not** production releases.
   discovering that a WAF-denied JSON POST still reached the backend;
   document streaming/upload compatibility limitations.
 - Verify chunked form/JSON bodies cannot evade phase-2 inspection and
-  exercise 128 KiB request-body oversize rejection.
+  exercise 128 KiB request-body oversize rejection plus backend absence.
+- Normalize bounded finite chunked bodies using an additional pre-WAF
+  Envoy buffer, retaining the post-WAF delivery barrier. Document the
+  increased memory cost and unsupported streaming workloads.
+- Add a documented testing strategy and coverage/evidence matrix.
 
 ### Security and reliability
 - Second audit PR hardens URI normalization, forwarded-header trust,

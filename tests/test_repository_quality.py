@@ -18,6 +18,7 @@ REQUIRED = (
     ".github/ISSUE_TEMPLATE/feature_request.yml",
     "docs/ARCHITECTURE.md", "docs/OPERATIONS.md",
     "docs/THREAT_MODEL.md", "docs/RELEASE.md",
+    "docs/TESTING.md",
 )
 
 
@@ -52,6 +53,7 @@ class RepositoryQualityTests(unittest.TestCase):
             "CODE_OF_CONDUCT.md", "SUPPORT.md", "CHANGELOG.md",
             "docs/ARCHITECTURE.md", "docs/OPERATIONS.md",
             "docs/MIGRATION.md", "docs/RELEASE.md", "docs/THREAT_MODEL.md",
+            "docs/TESTING.md",
         )
         link_pattern = re.compile(r"\]\(([^)\s]+)\)")
         for guide in guides:
