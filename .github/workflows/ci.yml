@@ -78,3 +78,56 @@ jobs:
             echo "Integration pass $pass of 2"
             bash tests/smoke.sh
           done
+
+  supply-chain:
+    name: OCI supply-chain evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve upstream registry digests
+        run: |
+          set -euo pipefail
+          mkdir -p build-evidence
+          : > build-evidence/upstream-images.tsv
+          for image in \
+            ghcr.io/corazawaf/coraza-proxy-wasm:0.6.0 \
+            envoyproxy/envoy:v1.40.2 \
+            mccutchen/go-httpbin:2.26.0; do
+            result="$(docker buildx imagetools inspect "$image")"
+            digest="$(printf '%s\n' "$result" | awk '$1 == "Digest:" {print $2; exit}')"
+            if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "Failed to resolve OCI manifest digest: $image" >&2
+              exit 1
+            fi
+            printf 'UPSTREAM_DIGEST %s %s\n' "$image" "$digest"
+            printf '%s %s\n' "$image" "$digest" >> build-evidence/upstream-images.tsv
+          done
+
+      - name: Build OCI artifact with SBOM and provenance
+        run: |
+          set -euo pipefail
+          docker buildx create --driver docker-container --use --name qa-attest
+          docker buildx inspect --bootstrap
+          docker buildx build --pull --platform linux/amd64 \
+            --sbom=true --provenance=mode=min,version=v1 \
+            --output "type=oci,dest=${RUNNER_TEMP}/waf-evidence.oci.tar" .
+          python3 scripts/verify_oci_evidence.py \
+            "${RUNNER_TEMP}/waf-evidence.oci.tar" build-evidence
+          # OCI tar contains the runtime image layers; only compact
+          # verified attestations and manifest metadata are retained.
+          rm -f "${RUNNER_TEMP}/waf-evidence.oci.tar"
+
+      - name: Upload reviewed build evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: oci-sbom-provenance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build-evidence/
+          if-no-files-found: error
+          retention-days: 14
