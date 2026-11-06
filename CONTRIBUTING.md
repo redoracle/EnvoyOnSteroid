@@ -71,3 +71,10 @@ container HostConfig, rather than relying exclusively on Compose YAML.
 CI runs two full integration passes to expose shared-state regressions;
 tests must remain serial, restart the backend in `finally`, and never
 assume a clean log history between repeat passes.
+
+For rejected traffic, check **both** the exact WAF transaction decision
+and absence of backend forwarding. Use a benign backend access-log
+barrier to avoid false success when log streams flush asynchronously.
+A small parallel traffic regression checks that allow/deny decisions do
+not leak between request contexts; do not infer production capacity
+from this controlled test.

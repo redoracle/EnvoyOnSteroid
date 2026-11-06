@@ -134,3 +134,18 @@ must not expose these untrusted values. The route-level stripping policy
 is intentional for this **direct-entry** demo; re-evaluate it behind a
 trusted ingress, because real applications may require a validated,
 gateway-generated client identity and original scheme.
+
+## Upstream non-forwarding and concurrent-request checks
+
+Denied form and JSON traffic includes a unique synthetic URI marker.
+After a rule-specific WAF decision is confirmed, an **allowed** GET is
+sent as a backend logging barrier. Only when that successful GET appears
+in the backend's own request logs does the test assert that the denied
+marker was absent from the upstream. This avoids mistaking slow log
+flushing for proof of enforcement.
+
+The suite also sends a small controlled burst of allowed GET and blocked
+form/JSON POST requests through the real Envoy/Coraza stack. It verifies
+eight echoed query values plus three distinct transaction-correlated
+phase-2 denials for **each** request-body rule. This is a cross-request
+state-isolation regression, not load or performance certification.

@@ -22,6 +22,9 @@ Git commits and merged PRs are **not** production releases.
   publishing; run the integration suite twice to detect state leakage.
 - Strip client-provided identity/protocol headers before routing to the
   reference backend and verify the effective behavior using spoof probes.
+- Require denied request-body probes to be absent from actual backend
+  request logs after a successful request barrier; add a controlled
+  parallel allow/deny traffic regression with transaction attribution.
 
 ### Security and reliability
 - Second audit PR hardens URI normalization, forwarded-header trust,

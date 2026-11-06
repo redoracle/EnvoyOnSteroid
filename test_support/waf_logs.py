@@ -58,3 +58,21 @@ def structured_access_records(raw_logs: str) -> list[dict]:
         if isinstance(record, dict) and _FIELDS.issubset(record):
             records.append(record)
     return records
+
+
+# go-httpbin writes a structured-ish request outcome in the `msg` field.
+# Count URIs only in those backend access messages, not the Coraza logs.
+_BACKEND_REQUEST_RE = re.compile(
+    r'msg="(?P<status>[1-5][0-9]{2}) (?P<method>[A-Z]+) (?P<uri>/[^" ]*)"'
+)
+
+
+def backend_uri_marker_hits(raw_logs: str, marker: str) -> int:
+    """Count actual backend requests carrying a test-only URI marker."""
+    if not re.fullmatch(r"[a-z0-9_]+", marker):
+        raise ValueError("backend marker must be a simple synthetic token")
+    return sum(
+        marker in match.group("uri")
+        for line in raw_logs.splitlines()
+        if (match := _BACKEND_REQUEST_RE.search(line))
+    )

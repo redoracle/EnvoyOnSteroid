@@ -11,10 +11,15 @@ import os
 import subprocess
 import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
-from test_support.waf_logs import denied_transactions, structured_access_records
+from test_support.waf_logs import (
+    backend_uri_marker_hits,
+    denied_transactions,
+    structured_access_records,
+)
 
 BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8080")
 PARSED = urlsplit(BASE_URL)
@@ -76,6 +81,21 @@ def compose(*args):
 
 def logs():
     return compose("logs", "--no-color", "envoy")
+
+
+def backend_logs():
+    return compose("logs", "--no-color", "backend")
+
+
+def wait_for_backend_observation(marker, baseline, *, timeout=8):
+    """Observe a completed allowed GET as a backend-access-log barrier."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        observed = backend_logs()
+        if backend_uri_marker_hits(observed, marker) > baseline:
+            return observed
+        time.sleep(0.2)
+    raise AssertionError("Backend did not record the allowed barrier request")
 
 
 def inspect_service(name):
@@ -241,6 +261,70 @@ class GatewayRequestHandlingTests(unittest.TestCase):
         self.fail("No structured JSON access record emitted for HEAD probe")
 
 
+class ConcurrentTrafficTests(unittest.TestCase):
+    def test_parallel_allow_and_deny_requests_keep_independent_decisions(self):
+        baseline = {
+            rule: denied_transactions(
+                logs(), rule_id=rule, phase="http_request_body"
+            )
+            for rule in ("1000002", "1000003")
+        }
+
+        def exercise(index):
+            if index < 8:
+                response = exchange(f"/get?qa_parallel={index}")
+                return index, response
+            if index < 11:
+                response = exchange(
+                    f"/post?qa_parallel={index}", method="POST",
+                    body="message=__waf_test_payload",
+                    headers={
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    },
+                )
+                return index, response
+            response = exchange(
+                f"/post?qa_parallel={index}", method="POST",
+                body=json.dumps({"message": "__waf_test_payload"}),
+                headers={"Content-Type": "application/json"},
+            )
+            return index, response
+
+        # Small controlled burst verifies per-request WAF context isolation,
+        # not throughput or production DoS capacity.
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(exercise, range(14)))
+
+        for index, response in results:
+            with self.subTest(request=index):
+                if index < 8:
+                    self.assertEqual(response.status, 200, response.body[:100])
+                    self.assertEqual(
+                        response.as_json()["args"]["qa_parallel"],
+                        [str(index)],
+                    )
+                else:
+                    self.assertEqual(response.status, 403, response.body[:100])
+
+        deadline = time.monotonic() + 8
+        while time.monotonic() < deadline:
+            current = logs()
+            if all(
+                len(
+                    denied_transactions(
+                        current, rule_id=rule, phase="http_request_body"
+                    ).difference(baseline[rule])
+                ) >= 3
+                for rule in ("1000002", "1000003")
+            ):
+                return
+            time.sleep(0.2)
+        self.fail(
+            "Concurrent blocked requests lacked 3 transaction-correlated "
+            "phase-2 decisions for each form/JSON rule"
+        )
+
+
 class RuntimeIsolationTests(unittest.TestCase):
     def assert_service_is_unprivileged(self, service, expected_user):
         inspected = inspect_service(service)
@@ -303,19 +387,46 @@ class GatewayWAFTests(unittest.TestCase):
             "/__waf_test_block", "1000001", "http_request_headers",
         )
 
-    def test_form_body_rule_blocks_in_phase_two(self):
+    def assert_denied_before_upstream(
+        self, path, *, marker, rule_id, body, content_type
+    ):
+        """Use an allowed backend request as a log barrier after WAF deny."""
+        baseline_logs = backend_logs()
+        blocked_before = backend_uri_marker_hits(baseline_logs, marker)
         self.assert_denied_by_rule(
-            "/post", "1000002", "http_request_body",
-            method="POST", body="message=__waf_test_payload",
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            path, rule_id, "http_request_body",
+            method="POST", body=body,
+            headers={"Content-Type": content_type},
+        )
+        barrier = f"qa_barrier_{marker}"
+        barrier_before = backend_uri_marker_hits(baseline_logs, barrier)
+        result = exchange(f"/get?qa_barrier={barrier}")
+        self.assertEqual(result.status, 200, result.body[:120])
+        self.assertEqual(result.as_json()["args"]["qa_barrier"], [barrier])
+
+        # Once the backend logs the follow-up successful request, the
+        # previously blocked request cannot be hidden behind log buffering.
+        observed = wait_for_backend_observation(barrier, barrier_before)
+        self.assertEqual(
+            backend_uri_marker_hits(observed, marker),
+            blocked_before,
+            "Request denied by the WAF nevertheless reached the upstream",
+        )
+
+    def test_form_body_rule_blocks_in_phase_two(self):
+        self.assert_denied_before_upstream(
+            "/post?qa_case=qa_blocked_form",
+            marker="qa_blocked_form", rule_id="1000002",
+            body="message=__waf_test_payload",
+            content_type="application/x-www-form-urlencoded",
         )
 
     def test_json_body_rule_blocks_in_phase_two(self):
-        self.assert_denied_by_rule(
-            "/post", "1000003", "http_request_body",
-            method="POST",
+        self.assert_denied_before_upstream(
+            "/post?qa_case=qa_blocked_json",
+            marker="qa_blocked_json", rule_id="1000003",
             body=json.dumps({"message": "__waf_test_payload"}),
-            headers={"Content-Type": "application/json"},
+            content_type="application/json",
         )
 
     def test_crs_xss_detection_not_just_generic_http_403(self):

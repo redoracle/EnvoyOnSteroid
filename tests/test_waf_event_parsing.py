@@ -3,7 +3,11 @@
 import json
 import unittest
 
-from test_support.waf_logs import denied_transactions, structured_access_records
+from test_support.waf_logs import (
+    backend_uri_marker_hits,
+    denied_transactions,
+    structured_access_records,
+)
 
 
 def rule_line(rule_id, tx_id):
@@ -108,6 +112,24 @@ class RuleDecisionParsingTests(unittest.TestCase):
                 phase="http_request_body",
             )
         )
+
+
+class BackendObservationTests(unittest.TestCase):
+    def test_only_real_backend_access_messages_count_as_requests(self):
+        logs = (
+            'backend-1 | time=t level=INFO '
+            'msg="200 GET /get?qa_blocked_form=1 0.2ms" status=200\\n'
+            'envoy-1 | [uri "/post?qa_blocked_form=1"]\\n'
+            'backend-1 | time=t level=INFO '
+            'msg="200 GET /get?qa_barrier_form=1 0.2ms" status=200\\n'
+        )
+        self.assertEqual(backend_uri_marker_hits(logs, "qa_blocked_form"), 1)
+        self.assertEqual(backend_uri_marker_hits(logs, "qa_barrier_form"), 1)
+        self.assertEqual(backend_uri_marker_hits(logs, "qa_missing"), 0)
+
+    def test_invalid_marker_fails_closed(self):
+        with self.assertRaisesRegex(ValueError, "synthetic token"):
+            backend_uri_marker_hits("", "../../etc/passwd")
 
 
 class AccessLogParsingTests(unittest.TestCase):
