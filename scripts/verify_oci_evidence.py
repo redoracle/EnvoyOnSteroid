@@ -40,7 +40,7 @@ def inspect_oci_archive(path):
         candidates = list(index.get("manifests", []))
         statements = {}
         image_manifests = []
-        linked_subjects = set()
+        linked_subjects = {"sbom": set(), "provenance": set()}
         inspected = 0
 
         while candidates:
@@ -96,16 +96,18 @@ def inspect_oci_archive(path):
                 valid = {item for item in subjects if _DIGEST.fullmatch(item)}
                 if not valid:
                     raise ValueError(f"{kind} attestation has no valid subject")
-                linked_subjects.update(valid)
+                linked_subjects[kind].update(valid)
                 statements[kind] = attestation
 
         if not image_manifests:
             raise ValueError("No linux/amd64 OCI image manifest found")
-        if not linked_subjects.intersection(image_manifests):
-            raise ValueError("OCI attestations are not linked to built image")
         for required in ("sbom", "provenance"):
             if required not in statements:
                 raise ValueError(f"Missing required {required} attestation")
+            if not linked_subjects[required].intersection(image_manifests):
+                raise ValueError(
+                    f"{required} attestation is not linked to the built image"
+                )
         summary = {
             "image_manifests": sorted(image_manifests),
             "sbom_package_count": len(statements["sbom"]["predicate"]["packages"]),

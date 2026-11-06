@@ -38,6 +38,19 @@ class ImageLockTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "differs"):
             validate_lock(lock, self.dockerfile, self.compose)
 
+    def test_comment_cannot_disguise_mutable_dockerfile_stage(self):
+        mutable = self.dockerfile.replace(
+            "FROM " + self.lock["images"]["envoy"]["tag"] +
+            "@" + self.lock["images"]["envoy"]["digest"],
+            "FROM " + self.lock["images"]["envoy"]["tag"],
+        )
+        # A naive substring-based test would accept the pinned comment.
+        mutable += "\n# " + self.lock["images"]["envoy"]["tag"] + "@" + (
+            self.lock["images"]["envoy"]["digest"]
+        ) + "\n"
+        with self.assertRaisesRegex(ValueError, "FROM stages"):
+            validate_lock(self.lock, mutable, self.compose)
+
     def test_registry_tag_drift_fails_closed(self):
         images = self.lock["images"]
         resolved = {item["tag"]: item["digest"] for item in images.values()}

@@ -78,6 +78,10 @@ class OCIEvidenceTests(unittest.TestCase):
         self.assertEqual(summary["sbom_package_count"], 1)
         self.assertFalse(summary["publisher_signatures_verified"])
 
+    def test_corrupted_blob_bytes_fail_content_address_validation(self):
+        with self.assertRaises(ValueError):
+            self.verify_fixture(good=False)
+
     def test_missing_sbom_fails_closed(self):
         with self.assertRaisesRegex(ValueError, "Missing required sbom"):
             self.verify_fixture(with_sbom=False)
