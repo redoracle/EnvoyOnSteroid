@@ -34,12 +34,13 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(
             [item["name"] for item in filters],
             [
+                "envoy.filters.http.buffer",
                 "envoy.filters.http.wasm",
                 "envoy.filters.http.buffer",
                 "envoy.filters.http.router",
             ],
         )
-        wasm = filters[0]["typed_config"]
+        wasm = filters[1]["typed_config"]
         self.assertEqual(
             wasm["@type"],
             "type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm",
@@ -58,15 +59,18 @@ class ConfigurationTests(unittest.TestCase):
 
     def test_buffer_stops_upstream_before_body_inspection_finishes(self):
         filters = self.http_config["http_filters"]
-        self.assertEqual(filters[1]["name"], "envoy.filters.http.buffer")
-        self.assertEqual(
-            filters[1]["typed_config"]["@type"],
-            "type.googleapis.com/envoy.extensions.filters.http.buffer.v3.Buffer",
-        )
-        self.assertEqual(
-            filters[1]["typed_config"]["max_request_bytes"]["value"],
-            128 * 1024,
-        )
+        self.assertEqual(filters[0]["name"], "envoy.filters.http.buffer")
+        self.assertEqual(filters[1]["name"], "envoy.filters.http.wasm")
+        self.assertEqual(filters[2]["name"], "envoy.filters.http.buffer")
+        for index in (0, 2):
+            self.assertEqual(
+                filters[index]["typed_config"]["@type"],
+                "type.googleapis.com/envoy.extensions.filters.http.buffer.v3.Buffer",
+            )
+            self.assertEqual(
+                filters[index]["typed_config"]["max_request_bytes"]["value"],
+                128 * 1024,
+            )
 
     def test_route_cluster_and_compose_backend_match(self):
         cluster = self.envoy["static_resources"]["clusters"][0]
@@ -164,7 +168,7 @@ class ConfigurationTests(unittest.TestCase):
 
     def test_phase_two_waf_rules_target_parsed_body_fields(self):
         filters = self.http_config["http_filters"]
-        wasm = filters[0]["typed_config"]["config"]["configuration"]["value"]
+        wasm = filters[1]["typed_config"]["config"]["configuration"]["value"]
         config = json.loads(wasm)
         directives = config["directives_map"][config["default_directives"]]
         for variable, rule_id in (

@@ -75,7 +75,15 @@ static_resources:
                             cluster: backend
                             timeout: 15s
                 http_filters:
-                  # The WAF must execute BEFORE the router.
+                  # First collect the complete bounded body, including
+                  # chunked requests, and normalize Content-Length before
+                  # Coraza/CRS protocol-enforcement rules inspect headers.
+                  - name: envoy.filters.http.buffer
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.buffer.v3.Buffer
+                      max_request_bytes:
+                        value: 131072
+                  # Coraza evaluates the normalized request body.
                   - name: envoy.filters.http.wasm
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
@@ -105,10 +113,10 @@ static_resources:
                           code:
                             local:
                               filename: /etc/envoy/coraza.wasm
-                  # Coraza must examine incoming body chunks first. Buffer
-                  # *after* Coraza but before the router, ensuring the
-                  # upstream cannot receive request data before inspection.
-                  # This reference does not support streaming/large uploads.
+                  # The second buffer is the upstream delivery barrier,
+                  # preventing the router from forwarding until Coraza has
+                  # finished inspecting the bounded request.
+                  # Dual buffering costs memory; streaming is unsupported.
                   - name: envoy.filters.http.buffer
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.buffer.v3.Buffer
