@@ -56,11 +56,34 @@ static_resources:
                       routes:
                         - match:
                             prefix: "/"
+                          # Edge reference: prevent untrusted identity/proto
+                          # headers from being interpreted by the upstream.
+                          # Behind a trusted ingress, review this policy.
+                          request_headers_to_remove:
+                            - x-forwarded-for
+                            - forwarded
+                            - x-real-ip
+                            - cf-connecting-ip
+                            - fly-client-ip
+                            - fastly-client-ip
+                            - true-client-ip
+                            - x-forwarded-host
+                            - x-forwarded-proto
+                            - x-forwarded-protocol
+                            - x-forwarded-ssl
                           route:
                             cluster: backend
                             timeout: 15s
                 http_filters:
-                  # The WAF must execute BEFORE the router.
+                  # First collect the complete bounded body, including
+                  # chunked requests, and normalize Content-Length before
+                  # Coraza/CRS protocol-enforcement rules inspect headers.
+                  - name: envoy.filters.http.buffer
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.buffer.v3.Buffer
+                      max_request_bytes:
+                        value: 131072
+                  # Coraza evaluates the normalized request body.
                   - name: envoy.filters.http.wasm
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
@@ -78,7 +101,8 @@ static_resources:
                                   "Include @crs-setup-conf",
                                   "Include @owasp_crs/*.conf",
                                   "SecRule REQUEST_URI \"@streq /__waf_test_block\" \"id:1000001,phase:1,deny,status:403,log\"",
-                                  "SecRule REQUEST_BODY \"@contains __waf_test_payload\" \"id:1000002,phase:2,deny,status:403,log\""
+                                  "SecRule ARGS_POST:message \"@contains __waf_test_payload\" \"id:1000002,phase:2,deny,status:403,log,msg:'Demo form body rule'\"",
+                                  "SecRule ARGS:json.message \"@contains __waf_test_payload\" \"id:1000003,phase:2,deny,status:403,log,msg:'Demo JSON body rule'\""
                                 ]
                               },
                               "default_directives": "default"
@@ -89,6 +113,15 @@ static_resources:
                           code:
                             local:
                               filename: /etc/envoy/coraza.wasm
+                  # The second buffer is the upstream delivery barrier,
+                  # preventing the router from forwarding until Coraza has
+                  # finished inspecting the bounded request.
+                  # Dual buffering costs memory; streaming is unsupported.
+                  - name: envoy.filters.http.buffer
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.buffer.v3.Buffer
+                      max_request_bytes:
+                        value: 131072
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router

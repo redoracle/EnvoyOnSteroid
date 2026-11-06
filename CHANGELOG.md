@@ -10,6 +10,46 @@ Git commits and merged PRs are **not** production releases.
   support guidance, CODEOWNERS, and editor/Git attributes.
 - Threat model, release checklist, automated repository hygiene checks.
 
+### Streaming security boundary
+- Document a separate streaming security architecture without enabling
+  an unsafe WAF upgrade bypass; enforce the current no-bypass invariant.
+- Validate GitHub workflow permissions, SHA-pinned actions and job limits.
+
+### WAF stability evidence
+- Add measured PR throughput/memory regression and a weekly five-minute
+  controlled traffic soak with p95/p99 latency, error and memory-growth
+  checks, retaining numerical run summaries.
+
+### OCI supply-chain integrity
+- Pin all three runtime image references by reviewed immutable OCI digest.
+- Detect upstream tag drift and preserve locally generated SPDX SBOM and
+  SLSA provenance attestations, with blob integrity checks.
+
+### Test-suite reliability
+- Replace ambiguous phase-2 smoke probes with exact Coraza rule IDs for
+  URL-encoded form and JSON request bodies; verify the interruption phase.
+- Assert real upstream method, query and body response contracts, path
+  normalization, header limits, and outage/recovery behavior.
+- Isolate Compose environments per CI run and limit failure diagnostics.
+- Correlate WAF matches and denial phases by Coraza transaction ID;
+  add deterministic parser tests that reject unrelated or malformed events.
+- Assert live Docker container runtime isolation and localhost-only
+  publishing; run the integration suite twice to detect state leakage.
+- Strip client-provided identity/protocol headers before routing to the
+  reference backend and verify the effective behavior using spoof probes.
+- Require denied request-body probes to be absent from actual backend
+  request logs after a successful request barrier; add a controlled
+  parallel allow/deny traffic regression with transaction attribution.
+- Add a bounded Envoy HTTP buffer between Coraza and the router after
+  discovering that a WAF-denied JSON POST still reached the backend;
+  document streaming/upload compatibility limitations.
+- Verify chunked form/JSON bodies cannot evade phase-2 inspection and
+  exercise 128 KiB request-body oversize rejection plus backend absence.
+- Normalize bounded finite chunked bodies using an additional pre-WAF
+  Envoy buffer, retaining the post-WAF delivery barrier. Document the
+  increased memory cost and unsupported streaming workloads.
+- Add a documented testing strategy and coverage/evidence matrix.
+
 ### Security and reliability
 - Second audit PR hardens URI normalization, forwarded-header trust,
   structured logging, runtime isolation, and request-body regression tests.

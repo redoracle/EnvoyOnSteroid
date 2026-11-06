@@ -33,9 +33,14 @@ class ConfigurationTests(unittest.TestCase):
         filters = self.http_config["http_filters"]
         self.assertEqual(
             [item["name"] for item in filters],
-            ["envoy.filters.http.wasm", "envoy.filters.http.router"],
+            [
+                "envoy.filters.http.buffer",
+                "envoy.filters.http.wasm",
+                "envoy.filters.http.buffer",
+                "envoy.filters.http.router",
+            ],
         )
-        wasm = filters[0]["typed_config"]
+        wasm = filters[1]["typed_config"]
         self.assertEqual(
             wasm["@type"],
             "type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm",
@@ -51,6 +56,21 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIn("Include @crs-setup-conf", rules)
         self.assertIn("Include @owasp_crs/*.conf", rules)
         self.assertTrue(any("/__waf_test_block" in line for line in rules))
+
+    def test_buffer_stops_upstream_before_body_inspection_finishes(self):
+        filters = self.http_config["http_filters"]
+        self.assertEqual(filters[0]["name"], "envoy.filters.http.buffer")
+        self.assertEqual(filters[1]["name"], "envoy.filters.http.wasm")
+        self.assertEqual(filters[2]["name"], "envoy.filters.http.buffer")
+        for index in (0, 2):
+            self.assertEqual(
+                filters[index]["typed_config"]["@type"],
+                "type.googleapis.com/envoy.extensions.filters.http.buffer.v3.Buffer",
+            )
+            self.assertEqual(
+                filters[index]["typed_config"]["max_request_bytes"]["value"],
+                128 * 1024,
+            )
 
     def test_route_cluster_and_compose_backend_match(self):
         cluster = self.envoy["static_resources"]["clusters"][0]
@@ -90,7 +110,8 @@ class ConfigurationTests(unittest.TestCase):
         self.assertNotIn("apt-get", self.dockerfile)
         self.assertEqual(
             self.compose["services"]["backend"]["image"],
-            "mccutchen/go-httpbin:2.26.0",
+            "mccutchen/go-httpbin:2.26.0@" +
+            "sha256:873b4fdb27fe7cc66fa12cb9362574e1b0bf31df7ca8a71b2502988327a0b8a4",
         )
 
     def test_every_runtime_image_has_an_explicit_version(self):
@@ -106,6 +127,27 @@ class ConfigurationTests(unittest.TestCase):
         self.assertTrue(self.http_config["merge_slashes"])
         self.assertEqual(
             self.http_config["path_with_escaped_slashes_action"], "REJECT_REQUEST"
+        )
+
+    def test_untrusted_identity_headers_are_removed_before_upstream(self):
+        route = self.http_config["route_config"]["virtual_hosts"][0][
+            "routes"
+        ][0]
+        stripped = set(route["request_headers_to_remove"])
+        self.assertTrue(
+            {
+                "x-forwarded-for",
+                "forwarded",
+                "x-real-ip",
+                "cf-connecting-ip",
+                "fly-client-ip",
+                "fastly-client-ip",
+                "true-client-ip",
+                "x-forwarded-host",
+                "x-forwarded-proto",
+                "x-forwarded-protocol",
+                "x-forwarded-ssl",
+            }.issubset(stripped)
         )
 
     def test_structured_access_logs_avoid_request_pii(self):
@@ -125,12 +167,22 @@ class ConfigurationTests(unittest.TestCase):
         self.assertNotIn("%DOWNSTREAM_REMOTE_ADDRESS%", fields.values())
         self.assertNotIn("%REQ(X-FORWARDED-FOR)%", fields.values())
 
-    def test_phase_two_waf_body_rule_is_loaded(self):
+    def test_phase_two_waf_rules_target_parsed_body_fields(self):
         filters = self.http_config["http_filters"]
-        rules = json.loads(filters[0]["typed_config"]["config"]["configuration"]["value"])
-        directives = rules["directives_map"][rules["default_directives"]]
-        self.assertTrue(any("SecRule REQUEST_BODY" in rule and
-                            "__waf_test_payload" in rule for rule in directives))
+        wasm = filters[1]["typed_config"]["config"]["configuration"]["value"]
+        config = json.loads(wasm)
+        directives = config["directives_map"][config["default_directives"]]
+        for variable, rule_id in (
+            ("ARGS_POST:message", "1000002"),
+            ("ARGS:json.message", "1000003"),
+        ):
+            with self.subTest(variable=variable):
+                matched = [d for d in directives if f"SecRule {variable} " in d]
+                self.assertEqual(len(matched), 1)
+                self.assertIn("phase:2", matched[0])
+                self.assertIn(f"id:{rule_id}", matched[0])
+                self.assertIn("deny", matched[0])
+        self.assertNotIn("SecRule REQUEST_BODY", " ".join(directives))
 
     def test_backend_and_proxy_limits_and_isolation(self):
         backend = self.compose["services"]["backend"]

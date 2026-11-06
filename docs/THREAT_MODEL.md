@@ -66,3 +66,40 @@ See [Operations](OPERATIONS.md) for the executable smoke tests and
 [Releases](RELEASE.md) for staging, regression, image provenance and
 production readiness. Passing the smoke tests is necessary but not
 sufficient to deploy on public networks.
+
+## Test evidence and logging residual risk
+
+CI now tests real phase-2 form and JSON rule matches and verifies backend
+payload contracts, bad-path handling and recovery from a controlled backend
+outage. It does not establish production false-positive rates, general WAF
+coverage, memory stability or concurrency limits.
+
+Structured Envoy access logs deliberately omit request details; separately,
+Coraza WASM diagnostics may still contain client addresses, complete URI
+paths and matched payload excerpts. Treat entire container logs as sensitive
+unless the WASM diagnostic stream is explicitly sanitized or restricted.
+
+## Spoofed client identity and application trust
+
+A proxy may correctly derive a trusted client address for **itself** while
+still passing incoming XFF or CDN-specific identity headers to an upstream
+that trusts them. The demonstration route strips those unverified headers
+and tests the actual backend's resulting view. This policy is specific to
+the direct-entry localhost example; multi-proxy deployments must establish
+their own authenticated trust boundary and end-to-end header contract.
+
+## Partial upstream delivery despite client-facing WAF denial
+
+A WAF's response action can arrive after downstream request data has
+already been streamed toward the upstream. The audit detected a
+blocked JSON POST that still appeared as a `400 POST` in backend logs.
+This is material for services with side effects even though the client
+saw HTTP 403.
+
+The reference now uses one buffer before Coraza (normalizing bounded
+request bodies) and another before the router (preventing premature
+upstream delivery), and tests non-forwarding with direct backend log
+observations. This mitigates early upstream delivery for bounded,
+non-streaming requests; it does not provide application-level
+transactions, replay immunity, or a guarantee for unvalidated
+production traffic.

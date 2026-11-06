@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "reviewed_at": "2026-11-06",
+  "images": {
+    "waf": {
+      "tag": "ghcr.io/corazawaf/coraza-proxy-wasm:0.6.0",
+      "digest": "sha256:d66f944831428ea27039207fa4019bea55f9ea0a876d7b0dc8cc7c9e385fa4b1"
+    },
+    "envoy": {
+      "tag": "envoyproxy/envoy:v1.40.2",
+      "digest": "sha256:8de97e654644827d62afdbf7e1d3dc9fee01a8690d410dd1c63a30dc6b6cecbb"
+    },
+    "backend": {
+      "tag": "mccutchen/go-httpbin:2.26.0",
+      "digest": "sha256:873b4fdb27fe7cc66fa12cb9362574e1b0bf31df7ca8a71b2502988327a0b8a4"
+    }
+  }
+}

@@ -17,6 +17,9 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-24.04
+    env:
+      # Ensure every attempt has its own containers, network and logs.
+      COMPOSE_PROJECT_NAME: envoy-qa-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     steps:
       # Both actions are pinned to verified release commit SHAs (not moving tags).
@@ -40,8 +43,8 @@ jobs:
       - name: Static configuration, repository policy and lint checks
         run: |
           bash -n tests/smoke.sh
-          .venv/bin/python -m compileall -q tests
-          .venv/bin/ruff check tests
+          .venv/bin/python -m compileall -q tests test_support scripts
+          .venv/bin/ruff check tests test_support scripts
           .venv/bin/python -m unittest discover -s tests -v
 
       - name: Validate Compose file
@@ -58,6 +61,85 @@ jobs:
       - name: Integration smoke test
         run: |
           set -euo pipefail
-          trap 'docker compose logs --no-color; docker compose down --volumes --remove-orphans' EXIT
+          cleanup() {
+            result=$?
+            if (( result != 0 )); then
+              docker compose ps || true
+              docker compose logs --no-color --tail 200 || true
+            fi
+            docker compose down --volumes --remove-orphans || true
+            exit "$result"
+          }
+          trap cleanup EXIT
           docker compose up --detach --no-build
-          bash tests/smoke.sh
+          # Repeat against the same running stack to expose shared-state,
+          # cleanup and log-correlation flakiness.
+          for pass in 1 2; do
+            echo "Integration pass $pass of 2"
+            bash tests/smoke.sh
+          done
+          # A bounded PR regression, not a sustained memory study.
+          python3 scripts/soak_gateway.py --duration 30 --rate 6 --workers 4 \
+            --output build-evidence/soak-report.json
+
+      - name: Upload bounded WAF soak evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: waf-soak-regression-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build-evidence/soak-report.json
+          if-no-files-found: error
+          retention-days: 14
+
+  supply-chain:
+    name: OCI supply-chain evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve upstream registry digests
+        run: |
+          set -euo pipefail
+          mkdir -p build-evidence
+          : > build-evidence/upstream-images.tsv
+          for image in \
+            ghcr.io/corazawaf/coraza-proxy-wasm:0.6.0 \
+            envoyproxy/envoy:v1.40.2 \
+            mccutchen/go-httpbin:2.26.0; do
+            result="$(docker buildx imagetools inspect "$image")"
+            digest="$(printf '%s\n' "$result" | awk '$1 == "Digest:" {print $2; exit}')"
+            if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "Failed to resolve OCI manifest digest: $image" >&2
+              exit 1
+            fi
+            printf 'UPSTREAM_DIGEST %s %s\n' "$image" "$digest"
+            printf '%s %s\n' "$image" "$digest" >> build-evidence/upstream-images.tsv
+          done
+          python3 scripts/verify_image_lock.py build-evidence/upstream-images.tsv
+
+      - name: Build OCI artifact with SBOM and provenance
+        run: |
+          set -euo pipefail
+          docker buildx create --driver docker-container --use --name qa-attest
+          docker buildx inspect --bootstrap
+          docker buildx build --pull --platform linux/amd64 \
+            --sbom=true --provenance=mode=min,version=v1 \
+            --output "type=oci,dest=${RUNNER_TEMP}/waf-evidence.oci.tar" .
+          python3 scripts/verify_oci_evidence.py \
+            "${RUNNER_TEMP}/waf-evidence.oci.tar" build-evidence
+          # OCI tar contains the runtime image layers; only compact
+          # verified attestations and manifest metadata are retained.
+          rm -f "${RUNNER_TEMP}/waf-evidence.oci.tar"
+
+      - name: Upload reviewed build evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: oci-sbom-provenance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build-evidence/
+          if-no-files-found: error
+          retention-days: 14

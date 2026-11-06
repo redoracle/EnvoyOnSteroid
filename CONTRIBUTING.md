@@ -50,3 +50,37 @@ Include a security/compatibility impact summary, affected dependency
 versions, reproducible validation commands, CI results, and any manual
 production tests not yet performed. Do not claim load testing or production
 readiness from passing unit and smoke tests alone.
+
+## Integration-test standards
+
+New WAF tests must prove the intended **rule ID and inspection phase** with
+a valid allowed content type and a matching benign control. Status-only
+assertions are insufficient because unrelated CRS rules may block a request.
+For forwarded traffic, validate actual backend response fields and payloads;
+for failures, test recovery as well as errors. Integration tests run only
+on the local, isolated Compose stack; unit tests remain network-free.
+Use synthetic payloads because WAF diagnostics may print matched values.
+
+The reusable parser in `test_support/waf_logs.py` is intentionally
+test-only; extend its offline negative examples whenever Coraza log
+formatting or test semantics change. Assertions must correlate rule,
+transaction and decision phase rather than merely counting occurrences.
+
+Runtime security tests intentionally inspect the effective Docker
+container HostConfig, rather than relying exclusively on Compose YAML.
+CI runs two full integration passes to expose shared-state regressions;
+tests must remain serial, restart the backend in `finally`, and never
+assume a clean log history between repeat passes.
+
+For rejected traffic, check **both** the exact WAF transaction decision
+and absence of backend forwarding. Use a benign backend access-log
+barrier to avoid false success when log streams flush asynchronously.
+A small parallel traffic regression checks that allow/deny decisions do
+not leak between request contexts; do not infer production capacity
+from this controlled test.
+
+For test layering, real-use-case scenarios, attack-safe fixtures, evidence
+requirements and remaining manual release gates, read the
+[testing strategy](docs/TESTING.md). Do not classify a WAF test as passing
+merely because a client received HTTP 403: prove both the correlated
+decision and absence of upstream delivery after a backend log barrier.

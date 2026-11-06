@@ -90,3 +90,56 @@ reduce some untrusted-client resource exhaustion. They are not a substitute
 for application-layer rate limits, network controls, or attack-resilient
 capacity planning. Large cookies and streaming workloads may require
 documented, separately verified exceptions.
+
+## Phase-2 inspection contract
+
+The recommended Coraza rules enable distinct body processors for form and
+JSON requests. The raw `REQUEST_BODY` collection is not populated by JSON
+processing. This reference therefore uses **phase-2** demo rules
+`ARGS_POST:message` (ID `1000002`) and `ARGS:json.message`
+(ID `1000003`). Each has an allowed control request with the same
+content type and a blocked request with a synthetic sentinel.
+
+CI requires a corresponding Coraza rule ID and
+`phase="http_request_body"` interruption for each blocked request.
+This prevents a phase-1 CRS rejection, such as disallowed `text/plain`,
+from masquerading as phase-2 protection. Both demo rules should be removed
+or rewritten for application-specific policies before production use.
+
+## Direct-entry forwarded-header filtering
+
+Envoy's trusted-client address policy and the headers forwarded to an
+application are distinct. With `use_remote_address` and zero trusted XFF
+hops, Envoy ignores client-supplied XFF for its own trust calculation, but
+an application may still parse a spoofed first XFF element or vendor IP
+header independently. The reference route explicitly removes untrusted
+identity/protocol headers before proxying to the demo backend. The CI
+contract checks the **actual** echoed backend headers and origin to catch
+spurious trust at the application boundary. Behind a verified load
+balancer/TLS ingress, adjust this direct-entry policy deliberately and
+verify it with real request traces.
+
+## Phase-2 delivery barrier and request buffering
+
+**Discovered security finding:** an HTTP 403 from the Coraza body rule
+did not guarantee the JSON POST was withheld from the demo backend.
+The initial backend-observation test captured a `400 POST` upstream
+access-log entry even though Envoy returned 403. The WAF filter must
+not be treated as a transactional delivery barrier by itself.
+
+Filter order is now:
+`buffer (inbound)` → `Coraza Proxy-WASM` →
+`buffer (delivery barrier)` → `router`.
+The inbound buffer normalizes complete finite chunked requests before
+CRS protocol checks. The downstream delivery buffer prevents the
+terminal router from forwarding a request until after Coraza has
+inspected the full bounded body. Integration tests verify both **rule attribution**
+and the absence of denied request markers in backend access logs
+after an allowed request confirms log flushing.
+
+Each of the two 128 KiB buffering limits is a deliberate example cap;
+their memory costs accumulate. Both may conflict with application-
+specific WAF body inspection limits, large uploads, WebSockets,
+gRPC streams, long-lived requests, or high concurrency.
+Finite chunked form and JSON bodies are supported and tested. Review memory costs, accepted content types and
+the correct request-size response codes when adapting this design.
