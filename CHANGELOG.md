@@ -10,6 +10,11 @@ Git commits and merged PRs are **not** production releases.
   support guidance, CODEOWNERS, and editor/Git attributes.
 - Threat model, release checklist, automated repository hygiene checks.
 
+### Streaming security boundary
+- Document a separate streaming security architecture without enabling
+  an unsafe WAF upgrade bypass; enforce the current no-bypass invariant.
+- Validate GitHub workflow permissions, SHA-pinned actions and job limits.
+
 ### WAF stability evidence
 - Add measured PR throughput/memory regression and a weekly five-minute
   controlled traffic soak with p95/p99 latency, error and memory-growth

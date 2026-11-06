@@ -75,3 +75,11 @@ Review its numeric JSON artifact and compare trends before promoting
 a release. A successful short soak **does not certify** the upstream
 Coraza WASM module against memory leaks; longer staged tests with
 representative traffic and controlled hardware remain mandatory.
+
+## Streaming compatibility
+
+No streaming support is included in this release. Do not remove the
+request-body buffers or enable a generic upgrade bypass to make a
+WebSocket/gRPC request succeed. Any future streaming implementation
+requires its own protocol-specific security model and real integration
+tests; see [streaming boundary](STREAMING.md).

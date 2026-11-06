@@ -150,3 +150,11 @@ These limits are coarse CI regression thresholds, **not production
 SLOs**. Multi-hour runs on controlled hardware, multi-platform checks,
 representative traffic, and baseline-to-baseline statistical comparisons
 are still needed to establish long-term WASM memory stability.
+
+## Streaming remains an explicitly guarded non-goal
+
+The offline streaming-boundary test rejects unreviewed upgrades,
+alternate listeners and unprotected backend routes. The two-buffer
+reference deployment is not streaming compatible; see
+[streaming security boundary](STREAMING.md) for the requirements
+before adding a protocol-specific gateway.

@@ -180,6 +180,7 @@ stress-test the WASM filter, and prepare a rollback.
 | [Threat model](docs/THREAT_MODEL.md) | Assets, threats and residual risks |
 | [Operations](docs/OPERATIONS.md) | Smoke tests, logs and diagnostics |
 | [Testing strategy](docs/TESTING.md) | Test layers, security oracles, CI and limits |
+| [Streaming boundary](docs/STREAMING.md) | Why streaming requires a separate protocol-aware design |
 | [Migration](docs/MIGRATION.md) | Breaking changes since 2019 |
 | [Release process](docs/RELEASE.md) | Safe dependency/release gates |
 | [Security](SECURITY.md) | Private vulnerability reporting |
