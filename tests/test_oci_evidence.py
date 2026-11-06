@@ -24,13 +24,14 @@ def make_archive(path, *, good=True, with_sbom=True, with_provenance=True):
     platform_image["platform"] = {"os": "linux", "architecture": "amd64"}
 
     layers = []
+    image_digest = platform_image["digest"].split(":", 1)[1]
     sbom = {
-        "subject": [{"name": "example", "digest": {"sha256": "0" * 64}}],
+        "subject": [{"name": "example", "digest": {"sha256": image_digest}}],
         "predicateType": "https://spdx.dev/Document",
         "predicate": {"spdxVersion": "SPDX-2.3", "packages": [{"name": "example"}]},
     }
     provenance = {
-        "subject": [{"name": "example", "digest": {"sha256": "0" * 64}}],
+        "subject": [{"name": "example", "digest": {"sha256": image_digest}}],
         "predicateType": "https://slsa.dev/provenance/v1",
         "predicate": {"buildDefinition": {"buildType": "example"}},
     }

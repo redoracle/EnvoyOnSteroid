@@ -40,6 +40,7 @@ def inspect_oci_archive(path):
         candidates = list(index.get("manifests", []))
         statements = {}
         image_manifests = []
+        linked_subjects = set()
         inspected = 0
 
         while candidates:
@@ -81,12 +82,27 @@ def inspect_oci_archive(path):
                         raise ValueError("Provenance lacks a builder or build definition")
                 else:
                     continue
-                if not attestation.get("subject"):
-                    raise ValueError(f"{kind} attestation has no subject")
+                # BuildKit links subjects either from in-toto statements,
+                # OCI manifest subjects, or OCI index annotations.
+                subjects = {
+                    "sha256:" + entry.get("digest", {}).get("sha256", "")
+                    for entry in attestation.get("subject", [])
+                }
+                linked = obj.get("subject", {}).get("digest") or descriptor.get(
+                    "annotations", {}
+                ).get("vnd.docker.reference.digest")
+                if linked:
+                    subjects.add(linked)
+                valid = {item for item in subjects if _DIGEST.fullmatch(item)}
+                if not valid:
+                    raise ValueError(f"{kind} attestation has no valid subject")
+                linked_subjects.update(valid)
                 statements[kind] = attestation
 
         if not image_manifests:
             raise ValueError("No linux/amd64 OCI image manifest found")
+        if not linked_subjects.intersection(image_manifests):
+            raise ValueError("OCI attestations are not linked to built image")
         for required in ("sbom", "provenance"):
             if required not in statements:
                 raise ValueError(f"Missing required {required} attestation")
