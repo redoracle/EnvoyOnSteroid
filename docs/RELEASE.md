@@ -11,7 +11,7 @@ workflow run validates this reference stack, not production certification.
 | Coraza Proxy-WASM | 0.6.0 | WASM image; embeds CRS v4.14.0 |
 | go-httpbin | v2.26.0 | Demo backend (includes WebSocket DoS fix) |
 | PyYAML | 6.0.3 | CI/static tests |
-| Ruff | 0.17.4 | CI Python lint |
+| Ruff | 0.17.6 | CI Python lint |
 | actions/checkout | v7.0.1 | Commit-SHA pinned CI action |
 | actions/setup-python | v7.1.0 | Commit-SHA pinned CI action |
 
