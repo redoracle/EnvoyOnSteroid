@@ -140,7 +140,7 @@ read-only repository access. A green run proves basic integration behavior,
 | Envoy | `envoyproxy/envoy:v1.40.2@sha256:8de97e65…` | Immutable proxy image manifest |
 | Coraza Proxy-WASM | `ghcr.io/corazawaf/coraza-proxy-wasm:0.6.0@sha256:d66f9448…` | Immutable WASM image; embeds Coraza 3.3.3 / CRS 4.14.0 |
 | go-httpbin | `mccutchen/go-httpbin:2.26.0@sha256:873b4fdb…` | Immutable demo backend |
-| PyYAML | `6.0.3` | Developer / CI tests |
+| PyYAML | `6.0.4` | Developer / CI tests |
 | Ruff | `0.17.4` | CI-only Python lint |
 | actions/checkout | `v7.0.1` | Immutable commit SHA in workflow |
 | actions/setup-python | `v7.1.0` | Immutable commit SHA in workflow |
